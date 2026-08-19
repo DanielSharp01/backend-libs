@@ -1,0 +1,28 @@
+# pnpm-workspace.yaml
+packages:
+  - packages/*
+  - sandbox
+allowBuilds:
+  "@scarf/scarf": false
+catalog:
+  "@hyperjump/json-schema": ^1.17.8
+  "@scalar/openapi-types": ^0.9.4
+  "@types/busboy": ^1.5.4
+  "@types/express": ^5.0.6
+  "@types/jsonwebtoken": ^9.0.0
+  "@types/mime-types": ^3.0.1
+  "@types/node": ^26.2.0
+  busboy: ^1.6.0
+  drizzle-orm: ^0.44.0
+  drizzle-zod: ^0.8.3
+  express: ^5.2.1
+  google-auth-library: ^11.0.0
+  jsonwebtoken: ^9.0.0
+  mime-types: ^3.0.2
+  redis: ^6.2.1
+  zod: ^4.4.3
+
+  typescript: ^5.9.0
+  tsdown: ^0.15.0
+  prettier: ^3.6.0
+  vitest: ^4.1.0

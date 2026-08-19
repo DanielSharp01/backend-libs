@@ -1,0 +1,19 @@
+{
+  "name": "personal-libs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "check": "pnpm -r check",
+    "test": "vitest run",
+    "test:types": "vitest run --typecheck.only",
+    "verify": "pnpm check && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "prettier": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@danielsharp/common",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "test": "vitest run --project @danielsharp/common",
+    "test:types": "vitest run --typecheck.only --project @danielsharp/common"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@danielsharp/typeline",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./graph": {
+      "types": "./dist/graph.d.ts",
+      "import": "./dist/graph.js",
+      "require": "./dist/graph.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@danielsharp/common": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "test": "vitest run --project @danielsharp/typeline",
+    "test:types": "vitest run --typecheck.only --project @danielsharp/typeline"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

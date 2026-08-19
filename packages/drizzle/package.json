@@ -1,0 +1,34 @@
+{
+  "name": "@danielsharp/drizzle",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "test": "vitest run --project @danielsharp/drizzle",
+    "test:types": "vitest run --typecheck.only --project @danielsharp/drizzle"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "devDependencies": {
+    "drizzle-orm": "catalog:"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  }
+}

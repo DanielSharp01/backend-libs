@@ -1,0 +1,47 @@
+{
+  "name": "@danielsharp/auth",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./google": {
+      "types": "./dist/google.d.ts",
+      "import": "./dist/google.js",
+      "require": "./dist/google.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@danielsharp/common": "workspace:*"
+  },
+  "peerDependencies": {
+    "google-auth-library": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "google-auth-library": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "benchmark": "vitest bench --project @danielsharp/auth",
+    "check": "tsc --noEmit",
+    "test": "vitest run --project @danielsharp/auth",
+    "test:types": "vitest run --typecheck.only --project @danielsharp/auth"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}

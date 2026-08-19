@@ -1,0 +1,64 @@
+import { expectTypeOf } from "vitest";
+
+import { router, type HttpContext, type HttpMetadata } from "@danielsharp/typeline-http";
+
+import {
+  authentication,
+  authErrorMapper,
+  AuthenticationRequired,
+  bearerTokenScheme,
+  cookieScheme,
+  MalformedBearerHeader,
+} from "../src/index";
+
+const cookie = cookieScheme("session", { httpOnly: true, path: "/", secure: true });
+const bearer = bearerTokenScheme("accessToken", { bearerFormat: "JWT" });
+const app = router();
+
+app.use(cookie);
+app.use(bearer);
+
+const auth = authentication({
+  scheme: cookie,
+  sessionProvider: {
+    verify(sessionId: string) {
+      return { userId: sessionId };
+    },
+  },
+});
+
+app.get("/required", (line) =>
+  line
+    .pipe((input: {}) => ({ ...input, retained: true as const }))
+    .pipe(auth.required())
+    .pipe((input) => {
+      expectTypeOf(input.retained).toEqualTypeOf<true>();
+      expectTypeOf(input.auth).toEqualTypeOf<{ userId: string }>();
+      return input;
+    }),
+);
+
+app.get("/optional", (line) =>
+  line.pipe(auth.optional()).pipe((input) => {
+    expectTypeOf(input.auth).toEqualTypeOf<{ userId: string } | undefined>();
+    return input;
+  }),
+);
+
+declare const context: HttpContext;
+expectTypeOf(cookie.read()(context)).toEqualTypeOf<Promise<string | undefined>>();
+expectTypeOf(bearer.read()(context)).toEqualTypeOf<Promise<string | undefined>>();
+expectTypeOf(cookie.set()({ retained: true, sessionId: "session-id", expiresAt: new Date() }, context)).toEqualTypeOf<{
+  retained: boolean;
+  sessionId: string;
+  expiresAt: Date;
+}>();
+expectTypeOf(cookie.clear()({ retained: true }, context)).toEqualTypeOf<{ retained: boolean }>();
+expectTypeOf(cookie.metadata).toMatchTypeOf<HttpMetadata>();
+expectTypeOf(bearer.metadata).toMatchTypeOf<HttpMetadata>();
+expectTypeOf(authErrorMapper).returns.toEqualTypeOf<import("@danielsharp/typeline-http").HttpError | undefined>();
+expectTypeOf(AuthenticationRequired.is).toBeFunction();
+expectTypeOf(MalformedBearerHeader.is).toBeFunction();
+
+// @ts-expect-error Session verification always receives a string credential.
+authentication({ scheme: cookie, sessionProvider: { verify(sessionId: number) {} } });
