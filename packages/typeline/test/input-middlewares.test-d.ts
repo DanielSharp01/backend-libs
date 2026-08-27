@@ -1,22 +1,53 @@
 import { expectTypeOf } from "vitest";
 
-import { extendInput, moveInput, omitInput, pickInput, tapInput } from "../src/input-middlewares";
+import {
+  extendInput,
+  mergeInput,
+  moveInput,
+  omitInput,
+  pickInput,
+  selectInput,
+  tapInput,
+} from "../src/input-middlewares";
+import { typeline, type Typeline } from "../src/pipeline";
 
+type OutputOf<T> = T extends Typeline<any, infer TOutput, any, any> ? TOutput : never;
 type Input = { path: string; request: { id: string } };
+type Context = { requestId: string };
+type Metadata = { name: string };
 
-const merged = extendInput((input: Input) => ({ pathLength: input.path.length }));
-expectTypeOf<Awaited<ReturnType<typeof merged>>>().toEqualTypeOf<Input & { pathLength: number }>();
+const root = typeline<Input, Input, Context, Metadata>();
 
-const assigned = extendInput("request", async (input: Input) => ({ ...input.request, authenticated: true as const }));
-expectTypeOf<Awaited<ReturnType<typeof assigned>>>().toEqualTypeOf<
+const merged = root.pipe(mergeInput((input: Input) => ({ pathLength: input.path.length })));
+expectTypeOf<OutputOf<typeof merged>>().toEqualTypeOf<Input & { pathLength: number }>();
+
+const assigned = root.pipe(
+  extendInput("request", async (input: Input) => ({ ...input.request, authenticated: true as const })),
+);
+expectTypeOf<OutputOf<typeof assigned>>().toEqualTypeOf<
   Omit<Input, "request"> & { request: { id: string; authenticated: true } }
 >();
 
-const tapped = tapInput(async (input: Input) => {
-  expectTypeOf(input).toEqualTypeOf<Input>();
-  return input.path;
-});
-expectTypeOf<Awaited<ReturnType<typeof tapped>>>().toEqualTypeOf<Input>();
+const tapped = root.pipe(
+  tapInput(async (input: Input, context: Context) => {
+    expectTypeOf(input).toEqualTypeOf<Input>();
+    expectTypeOf(context).toEqualTypeOf<Context>();
+    return input.path;
+  }),
+);
+expectTypeOf<OutputOf<typeof tapped>>().toEqualTypeOf<Input>();
+
+const selected = root.pipe(
+  selectInput((input: Input) => input.request, {
+    metadata: { name: "request" },
+    mw(request: Input["request"], context: Context) {
+      expectTypeOf(context).toEqualTypeOf<Context>();
+      return request;
+    },
+  }),
+);
+expectTypeOf<OutputOf<typeof selected>>().toEqualTypeOf<Input>();
+expectTypeOf(selected.metadata).toEqualTypeOf<Metadata[]>();
 
 const moved = moveInput("request", "originalRequest")({ path: "/users", request: { id: "user" } });
 expectTypeOf(moved.path).toEqualTypeOf<string>();

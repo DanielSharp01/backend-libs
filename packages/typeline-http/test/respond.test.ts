@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { isPipelineStop, typeline } from "@danielsharp/typeline";
+import { isPipelineStop, selectInput, typeline } from "@danielsharp/typeline";
 
 import type { HttpResponse } from "../src/response";
 import type { HttpMetadata } from "../src/metadata";
@@ -9,17 +9,18 @@ import { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from
 import type { HttpContext } from "../src/router";
 
 describe("HTTP response helpers", () => {
-  it("selects, serializes, and sends a typed JSON response", async () => {
+  it("serializes and sends a selected typed JSON response", async () => {
     let transforms = 0;
     const schema = z.object({ value: z.string() }).transform((value) => {
       transforms++;
       return { length: value.value.length };
     });
     const response = mockResponse();
-    const sender = jsonResSend(schema, 201, async () => ({ length: 4 }));
+    const sender = jsonResSend(schema, 201);
 
     const requestContext = context(response.value);
-    const sending = typeline<{}, {}, HttpContext, HttpMetadata>().pipe(sender).push({}, requestContext);
+    const selectedSender = selectInput(async () => ({ length: 4 }), sender);
+    const sending = typeline<{}, {}, HttpContext, HttpMetadata>().pipe(selectedSender).push({}, requestContext);
 
     await expect(sending).rejects.toSatisfy(isPipelineStop);
     expect(transforms).toBe(0);
@@ -39,19 +40,28 @@ describe("HTTP response helpers", () => {
   it("finishes selection and serialization before changing the response", async () => {
     const selectionFailure = new Error("selection failed");
     const selectionResponse = mockResponse();
-    const failedSelection = jsonResSend(z.any(), 200, async () => {
-      throw selectionFailure;
-    });
+    const failedSelection = typeline<{}, {}, HttpContext, HttpMetadata>()
+      .pipe(
+        selectInput(
+          async () => {
+            throw selectionFailure;
+          },
+          jsonResSend(z.any(), 200),
+        ),
+      )
+      .push({}, context(selectionResponse.value));
 
-    await expect(failedSelection.mw({}, context(selectionResponse.value))).rejects.toBe(selectionFailure);
+    await expect(failedSelection).rejects.toBe(selectionFailure);
     expectResponseUntouched(selectionResponse);
 
     const serializationResponse = mockResponse();
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
-    const failedSerialization = jsonResSend(z.any(), 200, () => cyclic);
+    const failedSerialization = jsonResSend(z.any(), 200);
 
-    await expect(failedSerialization.mw({}, context(serializationResponse.value))).rejects.toBeInstanceOf(TypeError);
+    await expect(failedSerialization.mw(cyclic, context(serializationResponse.value))).rejects.toBeInstanceOf(
+      TypeError,
+    );
     expectResponseUntouched(serializationResponse);
   });
 
@@ -69,12 +79,12 @@ describe("HTTP response helpers", () => {
     expect(end.metadata).toEqual({ responses: [{ status: 204 }] });
   });
 
-  it("selects a location, redirects, and records bodyless metadata", async () => {
+  it("redirects to a selected location and records bodyless metadata", async () => {
     const response = mockResponse();
-    const redirect = resRedirect(303, async (input: { destination: string }) => input.destination);
+    const redirect = resRedirect(303);
     const requestContext = context(response.value);
     const redirecting = typeline<{ destination: string }, { destination: string }, HttpContext, HttpMetadata>()
-      .pipe(redirect)
+      .pipe(selectInput((input) => input.destination, redirect))
       .push({ destination: "/complete" }, requestContext);
 
     await expect(redirecting).rejects.toSatisfy(isPipelineStop);
@@ -85,11 +95,15 @@ describe("HTTP response helpers", () => {
   it("finishes redirect selection before changing the response", async () => {
     const failure = new Error("selection failed");
     const response = mockResponse();
-    const redirect = resRedirect(302, async () => {
-      throw failure;
-    });
+    const redirect = typeline<{}, {}, HttpContext, HttpMetadata>()
+      .pipe(
+        selectInput(async () => {
+          throw failure;
+        }, resRedirect(302)),
+      )
+      .push({}, context(response.value));
 
-    await expect(redirect.mw({}, context(response.value))).rejects.toBe(failure);
+    await expect(redirect).rejects.toBe(failure);
     expectResponseUntouched(response);
   });
 
@@ -112,18 +126,14 @@ describe("HTTP response helpers", () => {
 
   it("rejects invalid and body-forbidden statuses when helpers are created", () => {
     const schema = z.string();
-    const select = () => "value";
-
     for (const status of [99, 100, 199, 600, 200.5, Number.NaN]) {
-      expect(() => jsonResSend(schema, status, select)).toThrow(TypeError);
+      expect(() => jsonResSend(schema, status)).toThrow(TypeError);
       expect(() => jsonResponseMeta(schema, status)).toThrow(TypeError);
       expect(() => resEnd(status)).toThrow(TypeError);
       expect(() => responseMeta(status)).toThrow(TypeError);
     }
     for (const status of [204, 205, 304]) {
-      expect(() => jsonResSend(schema, status, select)).toThrow(
-        `HTTP status ${status} cannot include JSON response content.`,
-      );
+      expect(() => jsonResSend(schema, status)).toThrow(`HTTP status ${status} cannot include JSON response content.`);
       expect(() => jsonResponseMeta(schema, status)).toThrow(
         `HTTP status ${status} cannot include JSON response content.`,
       );
@@ -131,9 +141,7 @@ describe("HTTP response helpers", () => {
       expect(() => responseMeta(status)).not.toThrow();
     }
     for (const status of [200, 300, 304, 305, 306, 309, 400]) {
-      expect(() => resRedirect(status as never, () => "/next")).toThrow(
-        "HTTP redirect status must be 301, 302, 303, 307, or 308.",
-      );
+      expect(() => resRedirect(status as never)).toThrow("HTTP redirect status must be 301, 302, 303, 307, or 308.");
     }
   });
 });

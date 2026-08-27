@@ -21,9 +21,6 @@ catalogs:
     '@types/mime-types':
       specifier: ^3.0.1
       version: 3.0.1
-    '@types/node':
-      specifier: ^26.2.0
-      version: 26.2.0
     busboy:
       specifier: ^1.6.0
       version: 1.6.0
@@ -176,46 +173,6 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.4.3
-
-  sandbox:
-    dependencies:
-      '@danielsharp/auth':
-        specifier: workspace:*
-        version: link:../packages/auth
-      '@danielsharp/common':
-        specifier: workspace:*
-        version: link:../packages/common
-      '@danielsharp/http-auth':
-        specifier: workspace:*
-        version: link:../packages/http-auth
-      '@danielsharp/redis':
-        specifier: workspace:*
-        version: link:../packages/redis
-      '@danielsharp/typeline':
-        specifier: workspace:*
-        version: link:../packages/typeline
-      '@danielsharp/typeline-http':
-        specifier: workspace:*
-        version: link:../packages/typeline-http
-      '@danielsharp/zod':
-        specifier: workspace:*
-        version: link:../packages/zod
-      redis:
-        specifier: 'catalog:'
-        version: 6.2.1
-      swagger-ui-dist:
-        specifier: ^5.32.14
-        version: 5.32.14
-      zod:
-        specifier: 'catalog:'
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.2.0
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
 
 packages:
 
@@ -521,9 +478,6 @@ packages:
   '@scalar/openapi-types@0.9.4':
     resolution: {integrity: sha512-eUSIjZEBLEF2i2pvcNdzXhzlKx6qt+hZsNklLmCyzPBoXWxHcQaEClgMFavXDRRvJDdi6LkyjqGUqqf0XgRgFg==}
     engines: {node: '>=22'}
-
-  '@scarf/scarf@1.4.0':
-    resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -1293,9 +1247,6 @@ packages:
     resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
     engines: {node: '>=10.0.0'}
 
-  swagger-ui-dist@5.32.14:
-    resolution: {integrity: sha512-nOA2pSQhcmODMUQZpJHYKNuwniDUqcOWGNaSCOoZv12FdOSJ9JxV95HtyRGNMqEBj6h6lCNTy20TgZDYTSuUIg==}
-
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
@@ -1688,8 +1639,6 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@scalar/openapi-types@0.9.4': {}
-
-  '@scarf/scarf@1.4.0': {}
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -2395,10 +2344,6 @@ snapshots:
   std-env@4.2.0: {}
 
   streamsearch@1.1.0: {}
-
-  swagger-ui-dist@5.32.14:
-    dependencies:
-      '@scarf/scarf': 1.4.0
 
   tinybench@2.9.0: {}
 

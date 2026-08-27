@@ -9,29 +9,52 @@ import {
 } from "../../common/src/object";
 import type { Awaitable } from "../../common/src/types";
 
-export function extendInput<TInput extends object, TExtension extends object>(
-  extension: (input: TInput) => Awaitable<TExtension>,
-): (input: TInput) => Promise<Merge<TInput, TExtension>>;
-export function extendInput<TInput extends object, TKey extends PropertyKey, TValue>(
+type ExecutableMiddleware<TInput, TOutput, TContext, TMeta> =
+  | ((input: TInput, context: TContext) => Awaitable<TOutput>)
+  | {
+      mw: (input: TInput, context: TContext) => Awaitable<TOutput>;
+      metadata?: TMeta | TMeta[] | undefined;
+    };
+
+type SelectedOutput<TInput, TOutput> = [TOutput] extends [never] ? never : TInput;
+
+export function extendInput<TInput extends object, TKey extends PropertyKey, TExtension, TContext, TMeta>(
   key: TKey,
-  value: (input: TInput) => Awaitable<TValue>,
-): (input: TInput) => Promise<Merge<TInput, Record<TKey, TValue>>>;
-export function extendInput<TInput extends object>(
-  extensionOrKey: PropertyKey | ((input: TInput) => Awaitable<object>),
-  value?: (input: TInput) => Awaitable<unknown>,
-) {
-  return async (input: TInput) => {
-    if (typeof extensionOrKey === "function") {
-      return { ...input, ...(await extensionOrKey(input)) };
-    }
-    return { ...input, [extensionOrKey]: await value?.(input) };
+  middleware: ExecutableMiddleware<TInput, TExtension, TContext, TMeta>,
+): ExecutableMiddleware<TInput, Merge<TInput, Record<TKey, TExtension>>, TContext, TMeta> {
+  const handler = typeof middleware === "function" ? middleware : middleware.mw;
+  return {
+    async mw(input: TInput, context: TContext) {
+      const extension = await handler(input, context);
+      return { ...input, [key]: extension } as Merge<TInput, Record<TKey, TExtension>>;
+    },
+    ...("metadata" in middleware ? { metadata: middleware.metadata } : {}),
   };
 }
 
-export function tapInput<TInput>(tap: (input: TInput) => Awaitable<unknown>) {
-  return async (input: TInput): Promise<TInput> => {
-    await tap(input);
-    return input;
+export function mergeInput<TInput extends object, TExtension extends object, TContext, TMeta>(
+  middleware: ExecutableMiddleware<TInput, TExtension, TContext, TMeta>,
+): ExecutableMiddleware<TInput, Merge<TInput, TExtension>, TContext, TMeta> {
+  const handler = typeof middleware === "function" ? middleware : middleware.mw;
+  return {
+    async mw(input: TInput, context: TContext) {
+      const extension = await handler(input, context);
+      return { ...input, ...extension } as Merge<TInput, TExtension>;
+    },
+    ...("metadata" in middleware ? { metadata: middleware.metadata } : {}),
+  };
+}
+
+export function tapInput<TInput, TContext, TMeta>(
+  middleware: ExecutableMiddleware<TInput, unknown, TContext, TMeta>,
+): ExecutableMiddleware<TInput, TInput, TContext, TMeta> {
+  const handler = typeof middleware === "function" ? middleware : middleware.mw;
+  return {
+    async mw(input: TInput, context: TContext) {
+      await handler(input, context);
+      return input;
+    },
+    ...("metadata" in middleware ? { metadata: middleware.metadata } : {}),
   };
 }
 
@@ -55,4 +78,19 @@ export function pickInput<const TMask extends Record<PropertyKey, true>>(mask: T
 export function omitInput<const TMask extends Record<PropertyKey, true>>(mask: TMask) {
   return <TInput extends object>(input: TInput): OmitMasked<TInput, TMask & Mask<TInput>> =>
     omit(input, mask as ExactMask<TInput, TMask & Mask<TInput>>);
+}
+
+export function selectInput<TInput, TMapped, TOutput, TContext, TMeta>(
+  mapper: (input: TInput, context: TContext) => Awaitable<TMapped>,
+  middleware: ExecutableMiddleware<TMapped, TOutput, TContext, TMeta>,
+): ExecutableMiddleware<TInput, SelectedOutput<TInput, TOutput>, TContext, TMeta> {
+  const handler = typeof middleware === "function" ? middleware : middleware.mw;
+  return {
+    async mw(input: TInput, context: TContext) {
+      const mapped = await mapper(input, context);
+      await handler(mapped, context);
+      return input as SelectedOutput<TInput, TOutput>;
+    },
+    ...("metadata" in middleware ? { metadata: middleware.metadata } : {}),
+  };
 }

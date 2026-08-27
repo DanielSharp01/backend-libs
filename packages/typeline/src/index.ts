@@ -10,7 +10,7 @@ export { branch, branchOn, branchOnContext } from "./branch";
 export { dispatcher, mapDispatcher, predicateDispatcher } from "./dispatcher";
 export type { Resolver, Dispatcher, DispatcherState, MapDispatcher, PredicateDispatcher } from "./dispatcher";
 
-export { extendInput, moveInput, omitInput, pickInput, tapInput } from "./input-middlewares";
+export { extendInput, mergeInput, moveInput, omitInput, pickInput, selectInput, tapInput } from "./input-middlewares";
 
 export { TypelineError, DispatcherNoMatchError, ConcurrencyTimeout } from "./errors";
 

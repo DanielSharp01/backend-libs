@@ -15,10 +15,12 @@ import {
   extendInput,
   isPipelineStop,
   mapDispatcher,
+  mergeInput,
   moveInput,
   omitInput,
   pickInput,
   predicateDispatcher,
+  selectInput,
   stop,
   tapInput,
   typeline,
@@ -48,10 +50,12 @@ expectTypeOf(dispatcher).toBeFunction();
 expectTypeOf(extendInput).toBeFunction();
 expectTypeOf(isPipelineStop).toBeFunction();
 expectTypeOf(mapDispatcher).toBeFunction();
+expectTypeOf(mergeInput).toBeFunction();
 expectTypeOf(moveInput).toBeFunction();
 expectTypeOf(omitInput).toBeFunction();
 expectTypeOf(pickInput).toBeFunction();
 expectTypeOf(predicateDispatcher).toBeFunction();
+expectTypeOf(selectInput).toBeFunction();
 expectTypeOf(Semaphore).toBeFunction();
 expectTypeOf(stop).toBeFunction();
 expectTypeOf(tapInput).toBeFunction();

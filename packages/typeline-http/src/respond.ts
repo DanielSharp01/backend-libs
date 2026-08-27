@@ -9,23 +9,13 @@ import type { HttpContext } from "./router";
 type ResponseMetadata = Required<Pick<HttpMetadata, "responses">>;
 type ResponseStatus = number | "default";
 
-interface ResponseMiddleware<TInput extends object, TContext extends HttpContext> {
-  readonly metadata: ResponseMetadata;
-  mw(input: TInput, context: TContext): Promise<never>;
-}
-
-export function jsonResSend<TSchema extends ZodType, TInput extends object, TContext extends HttpContext = HttpContext>(
-  schema: TSchema,
-  statusCode: number,
-  select: (input: TInput, context: TContext) => Awaitable<output<TSchema>>,
-): ResponseMiddleware<TInput, TContext> {
+export function jsonResSend<TSchema extends ZodType>(schema: TSchema, statusCode: number) {
   assertFinalResponseStatus(statusCode);
   assertJsonResponseStatus(statusCode);
   return {
     metadata: jsonResponseMetadata(schema, statusCode),
-    async mw(input, context) {
-      const output = await select(input, context);
-      const serialized = JSON.stringify(output);
+    async mw(input: output<TSchema>, context: HttpContext) {
+      const serialized = JSON.stringify(input);
       if (serialized === undefined) throw new TypeError("JSON response output could not be serialized.");
       context.res.status(statusCode).header("content-type", "application/json; charset=utf-8").send(serialized);
       return stop();
@@ -41,27 +31,23 @@ export function jsonResponseMeta(schema: ZodType, status: ResponseStatus): { rea
   return { metadata: jsonResponseMetadata(schema, status) };
 }
 
-export function resEnd(statusCode: number): ResponseMiddleware<object, HttpContext> {
+export function resEnd(statusCode: number) {
   assertFinalResponseStatus(statusCode);
   return {
     metadata: responseMetadata(statusCode),
-    async mw(_input, context) {
+    async mw(_input: unknown, context: HttpContext) {
       context.res.status(statusCode).send();
       return stop();
     },
   };
 }
 
-export function resRedirect<TInput extends object, TContext extends HttpContext = HttpContext>(
-  statusCode: HttpRedirectStatus,
-  select: (input: TInput, context: TContext) => Awaitable<string>,
-): ResponseMiddleware<TInput, TContext> {
+export function resRedirect(statusCode: HttpRedirectStatus) {
   assertRedirectStatus(statusCode);
   return {
     metadata: responseMetadata(statusCode),
-    async mw(input, context) {
-      const location = await select(input, context);
-      context.res.redirect(location, statusCode);
+    async mw(input: string, context: HttpContext) {
+      context.res.redirect(input, statusCode);
       return stop();
     },
   };
