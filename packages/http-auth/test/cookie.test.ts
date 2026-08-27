@@ -10,17 +10,17 @@ describe("cookieScheme", () => {
     expect(scheme.metadata).toEqual({
       securitySchemes: { session: { scheme: "cookie", cookieName: "session" } },
     });
-    await expect(scheme.read()(context({ unrelated: "value", session: "abc+123" }))).resolves.toBe("abc+123");
+    await expect(scheme.read(context({ unrelated: "value", session: "abc+123" }))).resolves.toBe("abc+123");
   });
 
   it("leaves missing credentials for auth to decide", async () => {
-    await expect(cookieScheme("session").read()(context())).resolves.toBeUndefined();
+    await expect(cookieScheme("session").read(context())).resolves.toBeUndefined();
   });
 
   it("keeps cookie parsing errors distinct from missing credentials", async () => {
     const malformed = new HeaderFormatError("cookie", new TypeError("malformed"));
     await expect(
-      cookieScheme("session").read()(
+      cookieScheme("session").read(
         context(() => {
           throw malformed;
         }),
@@ -38,7 +38,7 @@ describe("cookieScheme", () => {
       path: "/",
       sameSite: "strict",
       secure: true,
-    }).set();
+    }).set;
 
     expect(set(input, request)).toBe(input);
     expect(response.cookie).toHaveBeenCalledWith("session", "session-id", {
@@ -61,7 +61,7 @@ describe("cookieScheme", () => {
       path: "/api",
       sameSite: "strict",
       secure: true,
-    }).clear();
+    }).clear;
 
     expect(clear(input, request)).toBe(input);
     expect(response.clearCookie).toHaveBeenCalledWith("session", {

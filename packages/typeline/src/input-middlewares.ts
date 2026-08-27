@@ -16,8 +16,6 @@ type ExecutableMiddleware<TInput, TOutput, TContext, TMeta> =
       metadata?: TMeta | TMeta[] | undefined;
     };
 
-type SelectedOutput<TInput, TOutput> = [TOutput] extends [never] ? never : TInput;
-
 export function extendInput<TInput extends object, TKey extends PropertyKey, TExtension, TContext, TMeta>(
   key: TKey,
   middleware: ExecutableMiddleware<TInput, TExtension, TContext, TMeta>,
@@ -83,13 +81,12 @@ export function omitInput<const TMask extends Record<PropertyKey, true>>(mask: T
 export function selectInput<TInput, TMapped, TOutput, TContext, TMeta>(
   mapper: (input: TInput, context: TContext) => Awaitable<TMapped>,
   middleware: ExecutableMiddleware<TMapped, TOutput, TContext, TMeta>,
-): ExecutableMiddleware<TInput, SelectedOutput<TInput, TOutput>, TContext, TMeta> {
+): ExecutableMiddleware<TInput, TOutput, TContext, TMeta> {
   const handler = typeof middleware === "function" ? middleware : middleware.mw;
   return {
     async mw(input: TInput, context: TContext) {
       const mapped = await mapper(input, context);
-      await handler(mapped, context);
-      return input as SelectedOutput<TInput, TOutput>;
+      return await handler(mapped, context);
     },
     ...("metadata" in middleware ? { metadata: middleware.metadata } : {}),
   };

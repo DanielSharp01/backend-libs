@@ -40,16 +40,14 @@ export function bearerTokenScheme(schemeName: string, { bearerFormat, descriptio
 
   return {
     metadata,
-    read() {
-      return async (context: HttpContext): Promise<string | undefined> => {
-        const header = context.req.headers.authorization;
-        if (header === undefined) return undefined;
-        if (Array.isArray(header)) throw new MalformedBearerHeader();
+    async read(context: HttpContext): Promise<string | undefined> {
+      const header = context.req.headers.authorization;
+      if (header === undefined) return undefined;
+      if (Array.isArray(header)) throw new MalformedBearerHeader();
 
-        const match = /^Bearer +([A-Za-z0-9._~+/-]+=*)[ \t]*$/i.exec(header);
-        if (match === null) throw new MalformedBearerHeader();
-        return match[1];
-      };
+      const match = /^Bearer +([A-Za-z0-9._~+/-]+=*)[ \t]*$/i.exec(header);
+      if (match === null) throw new MalformedBearerHeader();
+      return match[1];
     },
   };
 }

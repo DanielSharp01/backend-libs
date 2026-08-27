@@ -15,7 +15,7 @@ describe("authentication", () => {
     const read = vi.fn(() => "session-id");
     const verify = vi.fn(async (sessionId: string) => ({ userId: `user:${sessionId}` }));
     const middleware = authentication({
-      scheme: { metadata, read: () => read },
+      scheme: { metadata, read },
       sessionProvider: { verify },
     }).required();
 
@@ -30,7 +30,7 @@ describe("authentication", () => {
   it("rejects missing required credentials without calling verify", async () => {
     const verify = vi.fn();
     const middleware = authentication({
-      scheme: { metadata, read: () => () => undefined },
+      scheme: { metadata, read: () => undefined },
       sessionProvider: { verify },
     }).required();
 
@@ -41,7 +41,7 @@ describe("authentication", () => {
   it("adds explicit undefined for missing optional credentials", async () => {
     const verify = vi.fn();
     const middleware = authentication({
-      scheme: { metadata, read: () => () => undefined },
+      scheme: { metadata, read: () => undefined },
       sessionProvider: { verify },
     }).optional();
 
@@ -57,7 +57,7 @@ describe("authentication", () => {
     const invalid = new SessionInvalidError();
     const verify = vi.fn().mockRejectedValue(invalid);
     const middleware = authentication({
-      scheme: { metadata, read: () => () => "expired-session" },
+      scheme: { metadata, read: () => "expired-session" },
       sessionProvider: { verify },
     }).optional();
 

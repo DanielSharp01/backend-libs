@@ -38,7 +38,7 @@ export function authentication<TAuth>({
 }: {
   scheme: {
     metadata: HttpMetadata;
-    read(): (context: HttpContext) => Awaitable<string | undefined>;
+    read(context: HttpContext): Awaitable<string | undefined>;
   };
   sessionProvider: {
     verify(sessionId: string): Awaitable<TAuth>;
@@ -53,14 +53,12 @@ export function authentication<TAuth>({
     mw(input: TInput, context: HttpContext): Promise<Merge<TInput, { auth: TAuth }>>;
   };
 } {
-  const read = scheme.read();
-
   return {
     optional<TInput extends object>() {
       return {
         metadata: { ...scheme.metadata, optionalSecurity: true } satisfies HttpMetadata,
         async mw(input: TInput, context: HttpContext): Promise<Merge<TInput, { auth: TAuth | undefined }>> {
-          const sessionId = await read(context);
+          const sessionId = await scheme.read(context);
           const verified = sessionId === undefined ? undefined : await sessionProvider.verify(sessionId);
           return { ...input, auth: verified };
         },
@@ -70,7 +68,7 @@ export function authentication<TAuth>({
       return {
         metadata: { ...scheme.metadata, optionalSecurity: false } satisfies HttpMetadata,
         async mw(input: TInput, context: HttpContext): Promise<Merge<TInput, { auth: TAuth }>> {
-          const sessionId = await read(context);
+          const sessionId = await scheme.read(context);
           if (sessionId === undefined) throw new AuthenticationRequired();
           return { ...input, auth: await sessionProvider.verify(sessionId) };
         },

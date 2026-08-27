@@ -23,23 +23,15 @@ export function cookieScheme<TCookieName extends string>(
 
   return {
     metadata,
-    read() {
-      return async (context: HttpContext): Promise<string | undefined> => {
-        const { cookies } = await validator.mw({}, context);
-        return cookies[cookieName];
-      };
+    async read(context: HttpContext): Promise<string | undefined> {
+      const { cookies } = await validator.mw({}, context);
+      return cookies[cookieName];
     },
-    set() {
-      return <TInput extends { sessionId: string; expiresAt: Date }>(input: TInput, context: HttpContext): TInput => {
-        context.res.cookie(cookieName, input.sessionId, { ...options, expires: input.expiresAt });
-        return input;
-      };
+    set(input: { sessionId: string; expiresAt: Date }, context: HttpContext) {
+      context.res.cookie(cookieName, input.sessionId, { ...options, expires: input.expiresAt });
     },
-    clear() {
-      return <TInput extends object>(input: TInput, context: HttpContext): TInput => {
-        context.res.clearCookie(cookieName, clearCookieOptions(options));
-        return input;
-      };
+    clear(context: HttpContext): void {
+      context.res.clearCookie(cookieName, clearCookieOptions(options));
     },
   };
 }

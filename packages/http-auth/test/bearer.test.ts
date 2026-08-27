@@ -12,17 +12,17 @@ describe("bearerTokenScheme", () => {
         accessToken: { scheme: "bearer", bearerFormat: "JWT", description: "Access token" },
       },
     });
-    await expect(scheme.read()(context({ authorization: "bEaReR abc.def-_123" }))).resolves.toBe("abc.def-_123");
+    await expect(scheme.read(context({ authorization: "bEaReR abc.def-_123" }))).resolves.toBe("abc.def-_123");
   });
 
   it("leaves a missing header for auth to decide", async () => {
-    await expect(bearerTokenScheme("accessToken").read()(context())).resolves.toBeUndefined();
+    await expect(bearerTokenScheme("accessToken").read(context())).resolves.toBeUndefined();
   });
 
   it.each(["Basic credentials", "Bearer", "Bearer first second", "Bearer\ttoken"])(
     "rejects the malformed Authorization header %j",
     async (authorization) => {
-      await expect(bearerTokenScheme("accessToken").read()(context({ authorization }))).rejects.toBeInstanceOf(
+      await expect(bearerTokenScheme("accessToken").read(context({ authorization }))).rejects.toBeInstanceOf(
         MalformedBearerHeader,
       );
     },
@@ -30,7 +30,7 @@ describe("bearerTokenScheme", () => {
 
   it("rejects repeated Authorization values", async () => {
     await expect(
-      bearerTokenScheme("accessToken").read()(context({ authorization: ["Bearer one", "Bearer two"] })),
+      bearerTokenScheme("accessToken").read(context({ authorization: ["Bearer one", "Bearer two"] })),
     ).rejects.toBeInstanceOf(MalformedBearerHeader);
   });
 });
