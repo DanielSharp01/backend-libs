@@ -5,7 +5,7 @@ import { isPipelineStop, typeline } from "@danielsharp/typeline";
 
 import type { HttpResponse } from "../src/response";
 import type { HttpMetadata } from "../src/metadata";
-import { jsonResSend, jsonResponseMeta, resEnd, responseMeta } from "../src/respond";
+import { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from "../src/respond";
 import type { HttpContext } from "../src/router";
 
 describe("HTTP response helpers", () => {
@@ -69,6 +69,30 @@ describe("HTTP response helpers", () => {
     expect(end.metadata).toEqual({ responses: [{ status: 204 }] });
   });
 
+  it("selects a location, redirects, and records bodyless metadata", async () => {
+    const response = mockResponse();
+    const redirect = resRedirect(303, async (input: { destination: string }) => input.destination);
+    const requestContext = context(response.value);
+    const redirecting = typeline<{ destination: string }, { destination: string }, HttpContext, HttpMetadata>()
+      .pipe(redirect)
+      .push({ destination: "/complete" }, requestContext);
+
+    await expect(redirecting).rejects.toSatisfy(isPipelineStop);
+    expect(response.redirect).toHaveBeenCalledWith("/complete", 303);
+    expect(redirect.metadata).toEqual({ responses: [{ status: 303 }] });
+  });
+
+  it("finishes redirect selection before changing the response", async () => {
+    const failure = new Error("selection failed");
+    const response = mockResponse();
+    const redirect = resRedirect(302, async () => {
+      throw failure;
+    });
+
+    await expect(redirect.mw({}, context(response.value))).rejects.toBe(failure);
+    expectResponseUntouched(response);
+  });
+
   it("declares inherited JSON and bodyless responses without middleware", () => {
     const schema = z.object({ error: z.string() });
 
@@ -106,6 +130,11 @@ describe("HTTP response helpers", () => {
       expect(() => resEnd(status)).not.toThrow();
       expect(() => responseMeta(status)).not.toThrow();
     }
+    for (const status of [200, 300, 304, 305, 306, 309, 400]) {
+      expect(() => resRedirect(status as never, () => "/next")).toThrow(
+        "HTTP redirect status must be 301, 302, 303, 307, or 308.",
+      );
+    }
   });
 });
 
@@ -113,6 +142,7 @@ interface MockResponse {
   readonly value: HttpResponse;
   readonly status: ReturnType<typeof vi.fn>;
   readonly header: ReturnType<typeof vi.fn>;
+  readonly redirect: ReturnType<typeof vi.fn>;
   readonly send: ReturnType<typeof vi.fn>;
 }
 
@@ -120,9 +150,10 @@ function mockResponse(): MockResponse {
   const value = {} as HttpResponse;
   const status = vi.fn(() => value);
   const header = vi.fn(() => value);
+  const redirect = vi.fn(() => value);
   const send = vi.fn(() => value);
-  Object.assign(value, { status, header, send });
-  return { value, status, header, send };
+  Object.assign(value, { status, header, redirect, send });
+  return { value, status, header, redirect, send };
 }
 
 function context(response: HttpResponse): HttpContext {
@@ -132,5 +163,6 @@ function context(response: HttpResponse): HttpContext {
 function expectResponseUntouched(response: MockResponse): void {
   expect(response.status).not.toHaveBeenCalled();
   expect(response.header).not.toHaveBeenCalled();
+  expect(response.redirect).not.toHaveBeenCalled();
   expect(response.send).not.toHaveBeenCalled();
 }

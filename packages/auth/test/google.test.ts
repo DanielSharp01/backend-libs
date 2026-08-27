@@ -5,18 +5,21 @@ import { googleOauth } from "../src/google";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  generateAuthUrl: vi.fn(),
   getToken: vi.fn(),
   getPayload: vi.fn(),
   verifyIdToken: vi.fn(),
 }));
 
 vi.mock("google-auth-library", () => ({
+  CodeChallengeMethod: { Plain: "plain", S256: "S256" },
   OAuth2Client: vi.fn(
     class {
       constructor(...args: unknown[]) {
         mocks.createClient(...args);
       }
 
+      generateAuthUrl = mocks.generateAuthUrl;
       getToken = mocks.getToken;
       verifyIdToken = mocks.verifyIdToken;
     },
@@ -26,6 +29,7 @@ vi.mock("google-auth-library", () => ({
 describe("googleOauth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.generateAuthUrl.mockReturnValue("https://accounts.google.com/authorize");
     mocks.getToken.mockResolvedValue({ tokens: { id_token: "id-token" } });
     mocks.verifyIdToken.mockResolvedValue({ getPayload: mocks.getPayload });
     mocks.getPayload.mockReturnValue({
@@ -38,6 +42,46 @@ describe("googleOauth", () => {
       family_name: "User",
       picture: "https://example.com/avatar.png",
       locale: "en",
+    });
+  });
+
+  it("generates an authorization URL with the default identity scopes", () => {
+    const provider = googleOauth({ clientId: "client-id", clientSecret: "client-secret" });
+
+    expect(
+      provider.getAuthorizationUrl({
+        redirectUri: "https://example.com/callback",
+        state: "state",
+      }),
+    ).toBe("https://accounts.google.com/authorize");
+    expect(mocks.generateAuthUrl).toHaveBeenCalledWith({
+      redirect_uri: "https://example.com/callback",
+      scope: ["openid", "email", "profile"],
+      state: "state",
+    });
+  });
+
+  it("adds an S256 PKCE challenge and optional nonce to the authorization URL", () => {
+    const provider = googleOauth({
+      clientId: "client-id",
+      clientSecret: "client-secret",
+      scopes: ["openid", "email", "custom-scope"],
+    });
+
+    provider.getAuthorizationUrl({
+      redirectUri: "https://example.com/callback",
+      state: "state",
+      codeChallenge: "code-challenge",
+      nonce: "nonce",
+    });
+
+    expect(mocks.generateAuthUrl).toHaveBeenCalledWith({
+      redirect_uri: "https://example.com/callback",
+      scope: ["openid", "email", "custom-scope"],
+      state: "state",
+      code_challenge: "code-challenge",
+      code_challenge_method: "S256",
+      nonce: "nonce",
     });
   });
 
@@ -81,6 +125,35 @@ describe("googleOauth", () => {
       code: "code",
       redirect_uri: "https://example.com/callback",
       codeVerifier: "code-verifier",
+    });
+  });
+
+  it("accepts an ID token with the expected nonce", async () => {
+    mocks.getPayload.mockReturnValue({ sub: "google-user", nonce: "nonce" });
+    const provider = googleOauth({ clientId: "client-id", clientSecret: "client-secret" });
+
+    await expect(
+      provider.getIdentity({
+        code: "code",
+        redirectUri: "https://example.com/callback",
+        nonce: "nonce",
+      }),
+    ).resolves.toMatchObject({ sub: "google-user" });
+  });
+
+  it("rejects an ID token without the expected nonce", async () => {
+    mocks.getPayload.mockReturnValue({ sub: "google-user", nonce: "different-nonce" });
+    const provider = googleOauth({ clientId: "client-id", clientSecret: "client-secret" });
+
+    await expect(
+      provider.getIdentity({
+        code: "code",
+        redirectUri: "https://example.com/callback",
+        nonce: "nonce",
+      }),
+    ).rejects.toMatchObject({
+      code: "OAUTH_ERROR",
+      cause: expect.objectContaining({ message: "Google ID token nonce does not match the OAuth request." }),
     });
   });
 

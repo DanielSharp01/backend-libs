@@ -1,4 +1,4 @@
-import { OAuth2Client } from "google-auth-library";
+import { CodeChallengeMethod, OAuth2Client } from "google-auth-library";
 import { OAuthError } from "./errors";
 import type { OAuthProvider } from "./oauth";
 
@@ -14,16 +14,40 @@ export interface GoogleIdentity {
   locale: string | undefined;
 }
 
+export interface GoogleOauthOptions {
+  clientId: string;
+  clientSecret: string;
+  scopes?: readonly string[];
+}
+
+const defaultScopes = ["openid", "email", "profile"] as const;
+
 export function googleOauth({
   clientId,
   clientSecret,
-}: {
-  clientId: string;
-  clientSecret: string;
-}): OAuthProvider<GoogleIdentity> {
+  scopes = defaultScopes,
+}: GoogleOauthOptions): OAuthProvider<GoogleIdentity> {
   const client = new OAuth2Client(clientId, clientSecret);
 
   return {
+    getAuthorizationUrl(request) {
+      try {
+        return client.generateAuthUrl({
+          redirect_uri: request.redirectUri,
+          scope: [...scopes],
+          state: request.state,
+          ...(request.codeChallenge === undefined
+            ? {}
+            : {
+                code_challenge: request.codeChallenge,
+                code_challenge_method: CodeChallengeMethod.S256,
+              }),
+          ...(request.nonce === undefined ? {} : { nonce: request.nonce }),
+        });
+      } catch (error) {
+        throw new OAuthError(error);
+      }
+    },
     async getIdentity(request) {
       try {
         const token = await client.getToken({
@@ -38,6 +62,9 @@ export function googleOauth({
         const payload = ticket.getPayload();
         if (!payload) {
           throw new Error("Failed to get payload from Google ID token.");
+        }
+        if (request.nonce !== undefined && payload.nonce !== request.nonce) {
+          throw new Error("Google ID token nonce does not match the OAuth request.");
         }
         return {
           sub: payload.sub,

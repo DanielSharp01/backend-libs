@@ -31,6 +31,8 @@ export interface HttpSendFileOptions {
   readonly root: string;
 }
 
+export type HttpRedirectStatus = 301 | 302 | 303 | 307 | 308;
+
 export interface HttpResponse {
   raw: ServerResponse;
   wrapUnsendable(cause?: unknown): UnsendableResponseError | undefined;
@@ -42,6 +44,7 @@ export interface HttpResponse {
     name: string,
     options?: Pick<HttpCookieOptions, "domain" | "path" | "secure" | "partitioned">,
   ): HttpResponse;
+  redirect(location: string, statusCode?: HttpRedirectStatus): HttpResponse;
   destroy(): void;
   flushHeaders(): HttpResponse;
   write(chunk: string | Uint8Array): Promise<void>;
@@ -114,6 +117,10 @@ export function httpResponse(response: ServerResponse): HttpResponse {
     clearCookie(name, options) {
       this.cookie(name, "", { ...options, maxAge: 0 });
       return result;
+    },
+    redirect(location, statusCode = 302) {
+      assertRedirectStatus(statusCode);
+      return this.status(statusCode).header("location", location).send();
     },
     destroy() {
       if (!response.destroyed && !response.writableEnded) {
@@ -214,6 +221,12 @@ export function httpResponse(response: ServerResponse): HttpResponse {
 
 export function isHttpResponse(value: unknown): value is HttpResponse {
   return typeof value === "object" && value !== null && HTTP_RESPONSE in value;
+}
+
+export function assertRedirectStatus(statusCode: number): asserts statusCode is HttpRedirectStatus {
+  if (statusCode !== 301 && statusCode !== 302 && statusCode !== 303 && statusCode !== 307 && statusCode !== 308) {
+    throw new TypeError("HTTP redirect status must be 301, 302, 303, 307, or 308.");
+  }
 }
 
 function flushHttpHeaders(response: ServerResponse): void {

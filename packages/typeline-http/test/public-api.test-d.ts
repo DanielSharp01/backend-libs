@@ -6,6 +6,7 @@ import {
   jsonResSend,
   jsonResponseMeta,
   resEnd,
+  resRedirect,
   responseMeta,
   router,
   setRequestDefaults,
@@ -18,6 +19,7 @@ import {
   type HttpError,
   type HttpMetadata,
   type HttpRequest,
+  type HttpRedirectStatus,
   type HttpResponse,
   RouteNotMatchedError,
   type Router,
@@ -34,6 +36,7 @@ expectTypeOf(defaultErrorHandler).toBeFunction();
 expectTypeOf(jsonResSend).toBeFunction();
 expectTypeOf(jsonResponseMeta).toBeFunction();
 expectTypeOf(resEnd).toBeFunction();
+expectTypeOf(resRedirect).toBeFunction();
 expectTypeOf(responseMeta).toBeFunction();
 expectTypeOf(setRequestDefaults).toBeFunction();
 expectTypeOf(swagger).toBeFunction();
@@ -51,6 +54,7 @@ type PublicTypes =
   | HttpError
   | HttpMetadata
   | HttpRequest
+  | HttpRedirectStatus
   | HttpResponse
   | Router<{}, {}, HttpContext>
   | SwaggerBuildResult

@@ -188,6 +188,32 @@ describe("HTTP response", () => {
     }
   });
 
+  it("redirects with an empty response and remains chainable", () => {
+    const defaultRaw = writableResponse();
+    const defaultRedirect = httpResponse(defaultRaw.value);
+
+    expect(defaultRedirect.redirect("/login")).toBe(defaultRedirect);
+    expect(defaultRaw.value.statusCode).toBe(302);
+    expect(defaultRaw.headers.get("location")).toBe("/login");
+    expect(defaultRaw.body()).toHaveLength(0);
+    expect(defaultRaw.value.writableEnded).toBe(true);
+
+    const explicitRaw = writableResponse();
+    httpResponse(explicitRaw.value).redirect("https://example.com/next", 303);
+    expect(explicitRaw.value.statusCode).toBe(303);
+    expect(explicitRaw.headers.get("location")).toBe("https://example.com/next");
+  });
+
+  it("rejects unsupported redirect statuses before changing the response", () => {
+    const raw = writableResponse();
+
+    expect(() => httpResponse(raw.value).redirect("/unchanged", 304 as never)).toThrow(
+      "HTTP redirect status must be 301, 302, 303, 307, or 308.",
+    );
+    expect(raw.headers.has("location")).toBe(false);
+    expect(raw.value.writableEnded).toBe(false);
+  });
+
   it("preserves an explicitly selected content type for JSON values", () => {
     const raw = writableResponse();
 

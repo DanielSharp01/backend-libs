@@ -30,6 +30,8 @@ expectTypeOf(
   response.status(201).header("x-value", "yes").cookie("session", "value").send(),
 ).toEqualTypeOf<HttpResponse>();
 expectTypeOf(response.header({ "x-first": "one", "x-second": 2 })).toEqualTypeOf<HttpResponse>();
+expectTypeOf(response.redirect("/login")).toEqualTypeOf<HttpResponse>();
+expectTypeOf(response.redirect("/complete", 303)).toEqualTypeOf<HttpResponse>();
 expectTypeOf(response.flushHeaders()).toEqualTypeOf<HttpResponse>();
 expectTypeOf(response.destroy()).toEqualTypeOf<void>();
 expectTypeOf(response.wrapUnsendable()).toEqualTypeOf<import("../src/response").UnsendableResponseError | undefined>();
@@ -128,6 +130,9 @@ context.req.routeResolution;
 
 // @ts-expect-error The response stream operation is named sendStream.
 response.pipe(Readable.from([]));
+
+// @ts-expect-error Redirect accepts only response statuses that perform navigation.
+response.redirect("/unchanged", 304);
 
 // @ts-expect-error Result-based validators were removed.
 type RemovedResultValidator = typeof import("../src/validate").validateQueryResult;

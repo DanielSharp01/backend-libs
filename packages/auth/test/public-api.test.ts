@@ -11,6 +11,7 @@ describe("public API", () => {
       "SessionInvalidError",
       "hashToken",
       "issueOpaqueToken",
+      "issuePkce",
       "sessionProvider",
       "tokenSecondsUntil",
     ]);

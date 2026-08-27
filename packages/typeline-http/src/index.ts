@@ -81,9 +81,15 @@ export type {
   HttpRouteUnsupportedMediaTypeResolution,
 } from "./request";
 
-export type { HttpCookieOptions, HttpResponse, HttpSendFileOptions, UnsendableResponseError } from "./response";
+export type {
+  HttpCookieOptions,
+  HttpRedirectStatus,
+  HttpResponse,
+  HttpSendFileOptions,
+  UnsendableResponseError,
+} from "./response";
 
-export { jsonResSend, jsonResponseMeta, resEnd, responseMeta } from "./respond";
+export { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from "./respond";
 
 export { swagger } from "./swagger";
 export type { OpenApiDocument, SwaggerBuildResult, SwaggerOptions, SwaggerWarning } from "./swagger";

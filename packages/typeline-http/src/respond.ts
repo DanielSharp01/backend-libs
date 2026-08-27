@@ -3,6 +3,7 @@ import { stop } from "@danielsharp/typeline";
 import type { output, ZodType } from "zod";
 
 import type { HttpMetadata } from "./metadata";
+import { assertRedirectStatus, type HttpRedirectStatus } from "./response";
 import type { HttpContext } from "./router";
 
 type ResponseMetadata = Required<Pick<HttpMetadata, "responses">>;
@@ -46,6 +47,21 @@ export function resEnd(statusCode: number): ResponseMiddleware<object, HttpConte
     metadata: responseMetadata(statusCode),
     async mw(_input, context) {
       context.res.status(statusCode).send();
+      return stop();
+    },
+  };
+}
+
+export function resRedirect<TInput extends object, TContext extends HttpContext = HttpContext>(
+  statusCode: HttpRedirectStatus,
+  select: (input: TInput, context: TContext) => Awaitable<string>,
+): ResponseMiddleware<TInput, TContext> {
+  assertRedirectStatus(statusCode);
+  return {
+    metadata: responseMetadata(statusCode),
+    async mw(input, context) {
+      const location = await select(input, context);
+      context.res.redirect(location, statusCode);
       return stop();
     },
   };

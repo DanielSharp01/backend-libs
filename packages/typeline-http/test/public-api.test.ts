@@ -70,6 +70,7 @@ describe("public API", () => {
         "jsonResSend",
         "jsonResponseMeta",
         "resEnd",
+        "resRedirect",
         "responseMeta",
         "router",
         "setRequestDefaults",
