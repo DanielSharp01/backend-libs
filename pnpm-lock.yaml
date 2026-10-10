@@ -88,6 +88,9 @@ importers:
 
   packages/drizzle:
     dependencies:
+      '@danielsharp/zod':
+        specifier: workspace:*
+        version: link:../zod
       zod:
         specifier: 'catalog:'
         version: 4.4.3

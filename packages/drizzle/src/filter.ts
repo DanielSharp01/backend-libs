@@ -18,7 +18,18 @@ import {
   and,
 } from "drizzle-orm";
 import { getLikeStrategy, type SqlDialect } from "./dialect";
-import z from "zod";
+import z, {
+  ZodBigInt,
+  ZodBoolean,
+  ZodDate,
+  ZodEnum,
+  ZodLiteral,
+  ZodNullable,
+  ZodNumber,
+  ZodString,
+  ZodType,
+} from "zod";
+import { zodStringify } from "@danielsharp/zod";
 
 export type Filter = {
   value: any;
@@ -29,7 +40,12 @@ export type FilterResolverMap<TFilters extends Record<string, Filter | Filter[]>
   [K in keyof TFilters]: (filter: TFilters[K]) => SQLWrapper | undefined;
 };
 
-export type BuiltinOperations =
+/** A parsed query is usually partial: a filter that wasn't given is skipped. */
+export type FilterInput<TFilters extends Record<string, Filter | Filter[]>> = {
+  [K in keyof TFilters]?: TFilters[K] | undefined;
+};
+
+export type BuiltinOperation =
   | "eq"
   | "neq"
   | "gt"
@@ -114,7 +130,7 @@ export const builtinOperations = [
   "nprein",
   "sufin",
   "nsufin",
-] as const satisfies readonly BuiltinOperations[];
+] as const satisfies readonly BuiltinOperation[];
 
 export function sqlFilterForDialect(dialect: SqlDialect) {
   const likeStrategy = getLikeStrategy(dialect);
@@ -217,8 +233,8 @@ export function sqlFilterForDialect(dialect: SqlDialect) {
 }
 
 export interface FilterResolver<TFilters extends Record<string, Filter | Filter[]>> {
-  filter<TKey extends keyof TFilters & string>(key: TKey, filter: TFilters[TKey]): SQLWrapper | undefined;
-  filters(filters: TFilters): SQLWrapper[];
+  filter<TKey extends keyof TFilters & string>(key: TKey, filter: TFilters[TKey] | undefined): SQLWrapper | undefined;
+  filters(filters: FilterInput<TFilters>): SQLWrapper[];
 }
 
 export function filterResolver<TFilters extends Record<string, Filter | Filter[]>>(
@@ -229,7 +245,7 @@ export function filterResolver<TFilters extends Record<string, Filter | Filter[]
       if (!map[key]) {
         throw new TypeError(`Unsupported filter key: ${key}`);
       }
-      return map[key](filter);
+      return filter === undefined ? undefined : map[key](filter);
     },
     filters(filters) {
       return Object.entries(filters)
@@ -237,103 +253,204 @@ export function filterResolver<TFilters extends Record<string, Filter | Filter[]
           if (!map[key]) {
             throw new TypeError(`Unsupported filter key: ${key}`);
           }
-          return map[key](filter as TFilters[typeof key]);
+          return filter === undefined ? undefined : map[key](filter as TFilters[typeof key]);
         })
         .filter((x) => !!x);
     },
   };
 }
 
-export function filterSchema<const TOperations extends readonly string[]>(operations: TOperations) {
-  type TOperation = TOperations[number];
+type ZodPrimitiveBase =
+  | ZodString
+  | ZodNumber
+  | ZodBoolean
+  | ZodDate
+  | ZodBigInt
+  | ZodLiteral<string>
+  | ZodEnum<Readonly<Record<string, string>>>;
 
-  const operationSet = new Set<string>(operations);
-  const defaultOperation = operationSet.has("eq") ? ("eq" as TOperation) : undefined;
+type ZodPrimitive = ZodPrimitiveBase | ZodNullable<ZodPrimitiveBase>;
 
-  return z.string().transform((input, ctx) => {
+const comparisonOperations = ["eq", "neq", "gt", "gte", "lt", "lte", "bet", "nbet", "in", "nin"] as const;
+const equalityOperations = ["eq", "neq", "in", "nin"] as const;
+const stringOperations = [
+  "eq",
+  "neq",
+  "in",
+  "nin",
+  "like",
+  "nlike",
+  "pat",
+  "npat",
+  "pre",
+  "npre",
+  "suf",
+  "nsuf",
+  "likein",
+  "nlikein",
+  "patin",
+  "npatin",
+  "prein",
+  "nprein",
+  "sufin",
+  "nsufin",
+] as const;
+const nullOperations = ["is", "isnot"] as const;
+
+const rangeOperationSet = new Set<string>(["bet", "nbet"]);
+const valueListOperationSet = new Set<string>(["in", "nin"]);
+const patternOperationSet = new Set<string>(["like", "nlike", "pat", "npat", "pre", "npre", "suf", "nsuf"]);
+const patternListOperationSet = new Set<string>(["likein", "nlikein", "patin", "npatin", "prein", "nprein", "sufin", "nsufin"]);
+const nullOperationSet = new Set<string>(nullOperations);
+
+/**
+ * Free text gets the pattern operations; enums and literals only compare whole values, and
+ * ordered types (numbers, dates) get ranges.
+ */
+export type BuiltinOperationForType<T> = null extends T
+  ? BuiltinOperationForType<Exclude<T, null>> | (typeof nullOperations)[number]
+  : T extends Date | number | bigint
+    ? (typeof comparisonOperations)[number]
+    : T extends string
+      ? string extends T
+        ? (typeof stringOperations)[number]
+        : (typeof equalityOperations)[number]
+      : (typeof equalityOperations)[number];
+
+export function builtinOperationForSchema<Z extends ZodPrimitive>(schema: Z): BuiltinOperationForType<z.output<Z>>[] {
+  const operations: readonly BuiltinOperation[] =
+    schema instanceof ZodNullable
+      ? [...builtinOperationForSchema(schema.unwrap()), ...nullOperations]
+      : schema instanceof ZodString
+        ? stringOperations
+        : schema instanceof ZodNumber || schema instanceof ZodBigInt || schema instanceof ZodDate
+          ? comparisonOperations
+          : equalityOperations;
+  return [...operations] as BuiltinOperationForType<z.output<Z>>[];
+}
+
+type ValueForOperation<T, TOperation> = TOperation extends "bet" | "nbet"
+  ? readonly [Exclude<T, null>, Exclude<T, null>]
+  : TOperation extends "in" | "nin"
+    ? Exclude<T, null>[]
+    : TOperation extends "likein" | "nlikein" | "patin" | "npatin" | "prein" | "nprein" | "sufin" | "nsufin"
+      ? string[]
+      : TOperation extends "like" | "nlike" | "pat" | "npat" | "pre" | "npre" | "suf" | "nsuf"
+        ? string
+        : TOperation extends "is" | "isnot"
+          ? Extract<T, null | boolean>
+          : Exclude<T, null>;
+
+/** One parsed filter per operation, each with the value shape that operation takes; assignable to BuiltinFilter<T>. */
+export type FilterFor<T, TOperation extends BuiltinOperation> = TOperation extends unknown
+  ? { operation: TOperation; value: ValueForOperation<T, TOperation> }
+  : never;
+
+/**
+ * Splits a list on commas. A comma inside a value is written as "\,", and a backslash as "\\".
+ * An empty list is an empty string.
+ */
+function splitList(value: string): string[] {
+  if (value === "") return [];
+  const items: string[] = [];
+  let current = "";
+  for (let i = 0; i < value.length; i++) {
+    const character = value[i];
+    if (character === "\\" && i + 1 < value.length) {
+      current += value[++i];
+    } else if (character === ",") {
+      items.push(current);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+  items.push(current);
+  return items;
+}
+
+/**
+ * Parses "operation:value" query strings, e.g. "gte:5", "bet:1,5", "in:a,b" or "is:null". Without
+ * a known operation prefix the whole string is an equality value. Values are parsed with the
+ * given schema, so "gte:5" on z.number() yields the number 5.
+ */
+export function filterSchema<
+  Z extends ZodPrimitive,
+  const TOperation extends BuiltinOperationForType<z.output<Z>> = BuiltinOperationForType<z.output<Z>>,
+>(schema: Z, operations?: readonly TOperation[]) {
+  type Output = FilterFor<z.output<Z>, TOperation>;
+  const inner: ZodType = schema instanceof ZodNullable ? schema.unwrap() : schema;
+  const stringifiedInner = zodStringify(inner);
+  const acceptsBoolean = inner instanceof ZodBoolean;
+
+  const operationSet = new Set<string>(operations ?? builtinOperationForSchema(schema));
+  const defaultOperation = operationSet.has("eq") ? "eq" : undefined;
+
+  return z.string().transform((input, ctx): Output => {
+    function parseOne(value: string): unknown {
+      const result = stringifiedInner.safeParse(value);
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          ctx.addIssue(issue as any);
+        }
+        return z.NEVER;
+      }
+      return result.data;
+    }
+
+    function parseValue(operation: string, value: string): unknown {
+      if (nullOperationSet.has(operation)) {
+        if (value === "null") return null;
+        if (acceptsBoolean && (value === "true" || value === "false")) return value === "true";
+        ctx.addIssue({
+          code: "invalid_value",
+          input: value,
+          values: acceptsBoolean ? ["null", "true", "false"] : ["null"],
+          message: `Operation ${operation} takes ${acceptsBoolean ? "null, true or false" : "null"}`,
+        });
+        return z.NEVER;
+      }
+      if (patternOperationSet.has(operation)) return value;
+      if (patternListOperationSet.has(operation)) return splitList(value);
+      if (valueListOperationSet.has(operation)) return splitList(value).map(parseOne);
+      if (rangeOperationSet.has(operation)) {
+        const bounds = splitList(value);
+        if (bounds.length !== 2) {
+          ctx.addIssue({ code: "custom", input: value, message: `Operation ${operation} takes two values: from,to` });
+          return z.NEVER;
+        }
+        return bounds.map(parseOne);
+      }
+      return parseOne(value);
+    }
+
     const separator = input.indexOf(":");
-
     if (separator !== -1) {
       const operation = input.slice(0, separator);
-
       if (operationSet.has(operation)) {
-        return {
-          operation: operation as TOperation,
-          value: input.slice(separator + 1),
-        };
+        return { operation, value: parseValue(operation, input.slice(separator + 1)) } as Output;
       }
     }
 
     if (defaultOperation) {
-      return {
-        operation: defaultOperation,
-        value: input,
-      };
+      return { operation: defaultOperation, value: parseValue(defaultOperation, input) } as Output;
     }
 
     ctx.addIssue({
       code: "invalid_value",
       input,
-      values: [...operations],
+      values: [...operationSet],
       message: `Unsupported operation: ${input}`,
     });
-
     return z.NEVER;
   });
 }
 
-export function multiFilterSchema<TOperations extends string>(operations: TOperations[]) {
-  const filter = filterSchema(operations);
+/** One filter, or the same query parameter repeated; repeated filters are combined with AND. */
+export function multiFilterSchema<
+  Z extends ZodPrimitive,
+  const TOperation extends BuiltinOperationForType<z.output<Z>> = BuiltinOperationForType<z.output<Z>>,
+>(schema: Z, operations?: readonly TOperation[]) {
+  const filter = filterSchema(schema, operations);
   return z.union([filter, filter.array()]);
-}
-
-const builtinFilterUnion = z.discriminatedUnion("operation", [
-  z.object({
-    operation: z.enum(["eq", "neq", "gt", "gte", "lt", "lte"]),
-    value: z.any(),
-  }),
-  z.object({
-    operation: z.enum(["bet", "nbet"]),
-    value: z.tuple([z.any(), z.any()]),
-  }),
-  z.object({
-    operation: z.enum(["in", "nin"]),
-    value: z.array(z.any()),
-  }),
-  z.object({
-    operation: z.enum(["like", "nlike", "pat", "npat", "pre", "npre", "suf", "nsuf"]),
-    value: z.string(),
-  }),
-  z.object({
-    operation: z.enum(["likein", "nlikein", "patin", "npatin", "prein", "nprein", "sufin", "nsufin"]),
-    value: z.array(z.string()),
-  }),
-  z.object({
-    operation: z.enum(["is", "isnot"]),
-    value: z.union([z.null(), z.boolean()]),
-  }),
-]);
-
-export function safeForBuiltin(schema: z.ZodType<Filter | Filter[], any>) {
-  return schema.check((ctx) => {
-    if (Array.isArray(ctx.value)) {
-      for (const filter of ctx.value) {
-        const parsed = builtinFilterUnion.safeParse(filter);
-        if (!parsed.success) {
-          for (const issue of parsed.error.issues) {
-            ctx.issues.push(issue as any);
-          }
-        }
-      }
-      return;
-    }
-
-    const parsed = builtinFilterUnion.safeParse(ctx.value);
-
-    if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
-        ctx.issues.push(issue as any);
-      }
-    }
-  });
 }

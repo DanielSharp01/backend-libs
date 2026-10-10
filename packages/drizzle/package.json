@@ -1,6 +1,6 @@
 {
   "name": "@danielsharp/drizzle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,6 +29,7 @@
   },
   "peerDependencies": {
     "drizzle-orm": "catalog:",
+    "@danielsharp/zod": "workspace:*",
     "zod": "catalog:"
   }
 }

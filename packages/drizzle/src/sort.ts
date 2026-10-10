@@ -1,4 +1,4 @@
-import { asc, desc, type SQL, type SQLWrapper } from "drizzle-orm";
+import { asc, desc, type SQL } from "drizzle-orm";
 import z from "zod";
 
 export type Sort<TSortKeys extends string> = {
@@ -8,25 +8,26 @@ export type Sort<TSortKeys extends string> = {
 
 export type SortResolverMap<TSortKeys extends string> = Record<TSortKeys, SQL>;
 
+/** Plain SQL, so the results go straight into drizzle's orderBy. */
 export interface SortResolver<TSortKeys extends string> {
-  sort(sort: Sort<TSortKeys>): SQLWrapper;
-  sorts(sorts: Sort<TSortKeys>[]): SQLWrapper[];
+  sort(sort: Sort<TSortKeys>): SQL;
+  sorts(sorts: Sort<TSortKeys>[]): SQL[];
 }
 
-export function sqlSort<T>(column: SQL<T>, direction: "asc" | "desc"): SQLWrapper {
+export function sqlSort<T>(column: SQL<T>, direction: "asc" | "desc"): SQL {
   return direction === "asc" ? asc(column) : desc(column);
 }
 
 export function sortResolver<TSortKeys extends string>(map: SortResolverMap<TSortKeys>): SortResolver<TSortKeys> {
   return {
-    sort(sort: Sort<TSortKeys>): SQLWrapper {
+    sort(sort: Sort<TSortKeys>): SQL {
       const { key, direction } = sort;
       if (!map[key]) {
         throw new TypeError(`Unsupported sort key: ${key}`);
       }
       return sqlSort(map[key], direction);
     },
-    sorts(sorts: Sort<TSortKeys>[]): SQLWrapper[] {
+    sorts(sorts: Sort<TSortKeys>[]): SQL[] {
       return sorts.map(({ key, direction }) => {
         if (!map[key]) {
           throw new TypeError(`Unsupported sort key: ${key}`);

@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import z from "zod";
 
 import {
+  builtinOperationForSchema,
   builtinOperations,
   filterResolver,
   filterSchema,
   multiFilterSchema,
-  safeForBuiltin,
   sqlFilterForDialect,
   type BuiltinFilter,
   type Filter,
@@ -16,28 +16,71 @@ import { toQuery } from "./helpers";
 
 describe("filter schemas", () => {
   it("parses an explicit operation at the first colon", () => {
-    expect(filterSchema(["eq", "pre"]).parse("pre:value:with:colons")).toEqual({
+    expect(filterSchema(z.string()).parse("pre:value:with:colons")).toEqual({
       operation: "pre",
       value: "value:with:colons",
     });
   });
 
   it("defaults to equality when no supported operation prefix is present", () => {
-    const schema = filterSchema(["eq", "pre"]);
+    const schema = filterSchema(z.string());
 
     expect(schema.parse("plain")).toEqual({ operation: "eq", value: "plain" });
     expect(schema.parse("unknown:value")).toEqual({ operation: "eq", value: "unknown:value" });
   });
 
+  it("parses values with the given schema", () => {
+    expect(filterSchema(z.number()).parse("gte:5")).toEqual({ operation: "gte", value: 5 });
+    expect(filterSchema(z.boolean()).parse("true")).toEqual({ operation: "eq", value: true });
+    expect(filterSchema(z.date()).parse("lt:2026-10-01")).toEqual({ operation: "lt", value: new Date("2026-10-01") });
+  });
+
+  it("rejects values the schema rejects", () => {
+    expect(filterSchema(z.number()).safeParse("gte:five").success).toBe(false);
+    expect(filterSchema(z.enum(["food", "drink"])).safeParse("rock").success).toBe(false);
+  });
+
+  it("parses two comma-separated bounds for ranges", () => {
+    expect(filterSchema(z.number()).parse("bet:1,5")).toEqual({ operation: "bet", value: [1, 5] });
+    expect(filterSchema(z.number()).safeParse("bet:1").success).toBe(false);
+    expect(filterSchema(z.number()).safeParse("bet:1,2,3").success).toBe(false);
+  });
+
+  it("parses comma-separated lists, with escaped commas and backslashes", () => {
+    expect(filterSchema(z.number()).parse("in:1,2,3")).toEqual({ operation: "in", value: [1, 2, 3] });
+    expect(filterSchema(z.string()).parse("in:a\\,b,c")).toEqual({ operation: "in", value: ["a,b", "c"] });
+    expect(filterSchema(z.string()).parse("prein:a\\\\,b")).toEqual({ operation: "prein", value: ["a\\", "b"] });
+    expect(filterSchema(z.string()).parse("in:")).toEqual({ operation: "in", value: [] });
+    expect(filterSchema(z.number()).safeParse("in:1,two").success).toBe(false);
+  });
+
+  it("keeps pattern values as raw text", () => {
+    expect(filterSchema(z.string().uuid()).parse("pre:abc")).toEqual({ operation: "pre", value: "abc" });
+  });
+
+  it("parses null and booleans for is and isnot on nullable columns", () => {
+    expect(filterSchema(z.string().nullable()).parse("is:null")).toEqual({ operation: "is", value: null });
+    expect(filterSchema(z.boolean().nullable()).parse("isnot:false")).toEqual({ operation: "isnot", value: false });
+    expect(filterSchema(z.string().nullable()).safeParse("is:true").success).toBe(false);
+    expect(filterSchema(z.string()).parse("is:null")).toEqual({ operation: "eq", value: "is:null" });
+  });
+
+  it("restricts parsing to the operations passed in", () => {
+    const schema = filterSchema(z.number(), ["eq", "gte"]);
+
+    expect(schema.parse("gte:5")).toEqual({ operation: "gte", value: 5 });
+    expect(schema.safeParse("lt:5").success).toBe(false);
+  });
+
   it("rejects an unsupported operation when equality is unavailable", () => {
-    const result = filterSchema(["pre", "suf"]).safeParse("eq:value");
+    const result = filterSchema(z.string(), ["pre", "suf"]).safeParse("eq:value");
 
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe("Unsupported operation: eq:value");
   });
 
   it("accepts one filter or an array of filters", () => {
-    const schema = multiFilterSchema(["eq", "neq"]);
+    const schema = multiFilterSchema(z.string(), ["eq", "neq"]);
 
     expect(schema.parse("one")).toEqual({ operation: "eq", value: "one" });
     expect(schema.parse(["one", "neq:two"])).toEqual([
@@ -46,14 +89,20 @@ describe("filter schemas", () => {
     ]);
   });
 
-  it("checks that filters use the value shape required by built-in operations", () => {
-    const schema = safeForBuiltin(z.custom<Filter | Filter[]>(() => true));
+  it("derives operations from the value type", () => {
+    expect(builtinOperationForSchema(z.number())).toEqual(["eq", "neq", "gt", "gte", "lt", "lte", "bet", "nbet", "in", "nin"]);
+    expect(builtinOperationForSchema(z.enum(["a", "b"]))).toEqual(["eq", "neq", "in", "nin"]);
+    expect(builtinOperationForSchema(z.string().nullable())).toContain("is");
+    expect(builtinOperationForSchema(z.string())).toContain("prein");
+  });
 
-    expect(schema.safeParse({ operation: "like", value: "needle" }).success).toBe(true);
-    expect(schema.safeParse([{ operation: "bet", value: [1, 2] }]).success).toBe(true);
-    expect(schema.safeParse({ operation: "like", value: 1 }).success).toBe(false);
-    expect(schema.safeParse({ operation: "is", value: "null" }).success).toBe(false);
-    expect(schema.safeParse({ operation: "missing", value: 1 }).success).toBe(false);
+  it("produces filters the SQL builder accepts", () => {
+    const { filtersForColumns } = sqlFilterForDialect("postgresql");
+    const resolver = filterResolver(filtersForColumns({ age: sql<number>`users.age` }));
+    const parsed = z.object({ age: filterSchema(z.number()).optional() }).parse({ age: "bet:20,30" });
+
+    expect(resolver.filters(parsed).map(toQuery)).toEqual([{ sql: "users.age between $1 and $2", params: [20, 30] }]);
+    expect(resolver.filters({})).toEqual([]);
   });
 
   it("lists every operation accepted by the built-in filter", () => {
