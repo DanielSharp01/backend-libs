@@ -66,6 +66,7 @@ describe("public API", () => {
         "VariantAlsoNegotiates",
         "builtinErrorMapping",
         "defaultErrorHandler",
+        "flashCookie",
         "isHttpError",
         "jsonResSend",
         "jsonResponseMeta",

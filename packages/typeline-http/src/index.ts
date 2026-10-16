@@ -89,6 +89,9 @@ export type {
   UnsendableResponseError,
 } from "./response";
 
+export { flashCookie } from "./flash-cookie";
+export type { FlashCookieOptions } from "./flash-cookie";
+
 export { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from "./respond";
 export type { ResRedirectOptions } from "./respond";
 

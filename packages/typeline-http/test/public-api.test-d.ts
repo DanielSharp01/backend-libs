@@ -3,6 +3,7 @@ import { expectTypeOf } from "vitest";
 import {
   builtinErrorMapping,
   defaultErrorHandler,
+  flashCookie,
   jsonResSend,
   jsonResponseMeta,
   resEnd,
@@ -33,6 +34,7 @@ import { httpContext, httpRequest, httpResponse, isHttpResponse } from "../src/n
 expectTypeOf(router).toBeFunction();
 expectTypeOf(builtinErrorMapping).toBeFunction();
 expectTypeOf(defaultErrorHandler).toBeFunction();
+expectTypeOf(flashCookie).toBeFunction();
 expectTypeOf(jsonResSend).toBeFunction();
 expectTypeOf(jsonResponseMeta).toBeFunction();
 expectTypeOf(resEnd).toBeFunction();
