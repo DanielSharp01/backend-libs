@@ -90,6 +90,7 @@ export type {
 } from "./response";
 
 export { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from "./respond";
+export type { ResRedirectOptions } from "./respond";
 
 export { swagger } from "./swagger";
 export type { OpenApiDocument, SwaggerBuildResult, SwaggerOptions, SwaggerWarning } from "./swagger";

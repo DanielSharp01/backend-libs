@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { isPipelineStop, selectInput, typeline } from "@danielsharp/typeline";
 
+import { BadRequest } from "../src/http-error";
 import type { HttpResponse } from "../src/response";
 import type { HttpMetadata } from "../src/metadata";
 import { jsonResSend, jsonResponseMeta, resEnd, resRedirect, responseMeta } from "../src/respond";
@@ -90,6 +91,42 @@ describe("HTTP response helpers", () => {
     await expect(redirecting).rejects.toSatisfy(isPipelineStop);
     expect(response.redirect).toHaveBeenCalledWith("/complete", 303);
     expect(redirect.metadata).toEqual({ responses: [{ status: 303 }] });
+  });
+
+  it("follows same-origin locations as the browser would resolve them", async () => {
+    for (const [location, expected] of [
+      ["/capture/", "/capture/"],
+      ["/a/../b?x=1#top", "/b?x=1#top"],
+      ["relative", "/relative"],
+      ["?page=2", "/?page=2"],
+    ]) {
+      const response = mockResponse();
+      const redirecting = typeline<string, string, HttpContext, HttpMetadata>()
+        .pipe(resRedirect(302, { sameOrigin: true }))
+        .push(location!, context(response.value));
+
+      await expect(redirecting).rejects.toSatisfy(isPipelineStop);
+      expect(response.redirect).toHaveBeenCalledWith(expected, 302);
+    }
+  });
+
+  it("refuses locations that leave the origin", async () => {
+    for (const location of [
+      "https://evil.example/",
+      "//evil.example/",
+      "/\\evil.example/",
+      "/\t/evil.example/",
+      "javascript:alert(1)",
+      "http://[",
+    ]) {
+      const response = mockResponse();
+      const redirecting = typeline<string, string, HttpContext, HttpMetadata>()
+        .pipe(resRedirect(302, { sameOrigin: true }))
+        .push(location, context(response.value));
+
+      await expect(redirecting).rejects.toBeInstanceOf(BadRequest);
+      expectResponseUntouched(response);
+    }
   });
 
   it("finishes redirect selection before changing the response", async () => {

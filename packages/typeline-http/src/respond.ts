@@ -2,6 +2,7 @@ import type { Awaitable } from "@danielsharp/common";
 import { stop } from "@danielsharp/typeline";
 import type { output, ZodType } from "zod";
 
+import { BadRequest } from "./http-error";
 import type { HttpMetadata } from "./metadata";
 import { assertRedirectStatus, type HttpRedirectStatus } from "./response";
 import type { HttpContext } from "./router";
@@ -42,12 +43,17 @@ export function resEnd(statusCode: number) {
   };
 }
 
-export function resRedirect(statusCode: HttpRedirectStatus) {
+export interface ResRedirectOptions {
+  /** Only follow locations on this origin; anything else is a 400. Absolute URLs are refused even when they name this host. */
+  sameOrigin?: boolean;
+}
+
+export function resRedirect(statusCode: HttpRedirectStatus, { sameOrigin = false }: ResRedirectOptions = {}) {
   assertRedirectStatus(statusCode);
   return {
     metadata: responseMetadata(statusCode),
     async mw(input: string, context: HttpContext) {
-      context.res.redirect(input, statusCode);
+      context.res.redirect(sameOrigin ? sameOriginLocation(input) : input, statusCode);
       return stop();
     },
   };
@@ -56,6 +62,21 @@ export function resRedirect(statusCode: HttpRedirectStatus) {
 export function responseMeta(status: ResponseStatus): { readonly metadata: ResponseMetadata } {
   if (status !== "default") assertFinalResponseStatus(status);
   return { metadata: responseMetadata(status) };
+}
+
+const PLACEHOLDER_ORIGIN = "http://same-origin.invalid";
+
+// Resolved the way a browser would, so "//host", "/\host" and tab or newline tricks all land on another origin.
+// The re-serialized path is sent instead of the input, so the browser follows exactly what was checked.
+function sameOriginLocation(location: string): string {
+  let url: URL;
+  try {
+    url = new URL(location, PLACEHOLDER_ORIGIN);
+  } catch {
+    throw new BadRequest({ redirect: "invalid location" });
+  }
+  if (url.origin !== PLACEHOLDER_ORIGIN) throw new BadRequest({ redirect: "not same-origin" });
+  return url.pathname + url.search + url.hash;
 }
 
 function jsonResponseMetadata(schema: ZodType, status: ResponseStatus): ResponseMetadata {
