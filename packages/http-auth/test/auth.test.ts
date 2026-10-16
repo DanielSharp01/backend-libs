@@ -1,4 +1,4 @@
-import { SessionInvalidError } from "@danielsharp/auth";
+import { OAuthDeniedError, OAuthError, SessionInvalidError } from "@danielsharp/auth";
 import { BadRequest, Unauthorized, type HttpContext, type HttpMetadata } from "@danielsharp/typeline-http";
 import { describe, expect, it, vi } from "vitest";
 
@@ -70,6 +70,8 @@ describe("authErrorMapper", () => {
     expect(authErrorMapper(new MalformedBearerHeader())).toBeInstanceOf(BadRequest);
     expect(authErrorMapper(new AuthenticationRequired())).toBeInstanceOf(Unauthorized);
     expect(authErrorMapper(new SessionInvalidError())).toBeInstanceOf(Unauthorized);
+    expect(authErrorMapper(new OAuthError(new Error("exchange failed")))).toBeInstanceOf(Unauthorized);
+    expect(authErrorMapper(new OAuthDeniedError())).toBeInstanceOf(Unauthorized);
   });
 
   it("leaves unrelated errors unmapped", () => {

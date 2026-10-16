@@ -1,6 +1,8 @@
 import { expectTypeOf } from "vitest";
 
-import { router, type HttpContext, type HttpMetadata } from "@danielsharp/typeline-http";
+import type { OAuthProvider } from "@danielsharp/auth";
+import { flashCookie, router, type HttpContext, type HttpMetadata } from "@danielsharp/typeline-http";
+import { z } from "zod";
 
 import {
   authentication,
@@ -9,6 +11,7 @@ import {
   bearerTokenScheme,
   cookieScheme,
   MalformedBearerHeader,
+  oauthCallback,
 } from "../src/index";
 
 const cookie = cookieScheme("session", { httpOnly: true, path: "/", secure: true });
@@ -34,6 +37,29 @@ app.get("/required", (line) =>
     .pipe((input) => {
       expectTypeOf(input.retained).toEqualTypeOf<true>();
       expectTypeOf(input.auth).toEqualTypeOf<{ userId: string }>();
+      return input;
+    }),
+);
+
+declare const google: OAuthProvider<{ sub: string }>;
+const pkceCookie = flashCookie(
+  "pkce",
+  z
+    .string()
+    .transform((value) => JSON.parse(value) as unknown)
+    .pipe(z.object({ codeVerifier: z.string(), nonce: z.string() })),
+  { maxAge: 300_000 },
+);
+
+app.get("/callback", (line) =>
+  line
+    .pipe((input: {}) => ({ ...input, retained: true as const }))
+    .pipe(pkceCookie.take("pkce"))
+    .pipe(oauthCallback({ provider: google, redirectUri: "https://api.example/callback" }))
+    .pipe((input) => {
+      expectTypeOf(input.retained).toEqualTypeOf<true>();
+      expectTypeOf(input.identity).toEqualTypeOf<{ sub: string }>();
+      expectTypeOf(input.state).toEqualTypeOf<string>();
       return input;
     }),
 );

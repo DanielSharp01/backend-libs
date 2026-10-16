@@ -1,4 +1,4 @@
-import { SessionInvalidError } from "@danielsharp/auth";
+import { OAuthDeniedError, OAuthError, SessionInvalidError } from "@danielsharp/auth";
 import type { Awaitable, Merge } from "@danielsharp/common";
 import {
   BadRequest,
@@ -79,6 +79,13 @@ export function authentication<TAuth>({
 
 export function authErrorMapper(error: unknown): HttpError | undefined {
   if (MalformedBearerHeader.is(error)) return new BadRequest({ header: "authorization" });
-  if (AuthenticationRequired.is(error) || SessionInvalidError.is(error)) return new Unauthorized();
+  if (
+    AuthenticationRequired.is(error) ||
+    SessionInvalidError.is(error) ||
+    OAuthError.is(error) ||
+    OAuthDeniedError.is(error)
+  ) {
+    return new Unauthorized();
+  }
   return undefined;
 }

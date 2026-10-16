@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as httpAuth from "../src/index";
 
 describe("public API", () => {
-  it("exposes only the authentication middleware and schemes", () => {
+  it("exposes only the authentication middleware, schemes and OAuth callback", () => {
     expect(Object.keys(httpAuth).sort()).toEqual([
       "AuthenticationRequired",
       "MalformedBearerHeader",
@@ -11,6 +11,7 @@ describe("public API", () => {
       "authentication",
       "bearerTokenScheme",
       "cookieScheme",
+      "oauthCallback",
     ]);
   });
 });
