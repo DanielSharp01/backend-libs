@@ -32,7 +32,6 @@ describe("cookieScheme", () => {
     const expiresAt = new Date("2026-01-02T00:00:00.000Z");
     const response = responseSpies();
     const request = context({}, response.res);
-    const input = { retained: true, sessionId: "session-id", expiresAt };
     const set = cookieScheme("session", {
       httpOnly: true,
       path: "/",
@@ -40,7 +39,7 @@ describe("cookieScheme", () => {
       secure: true,
     }).set;
 
-    expect(set(input, request)).toBe(input);
+    set({ sessionId: "session-id", expiresAt }, request);
     expect(response.cookie).toHaveBeenCalledWith("session", "session-id", {
       expires: expiresAt,
       httpOnly: true,
@@ -53,7 +52,6 @@ describe("cookieScheme", () => {
   it("clears the cookie with only matching scope options", () => {
     const response = responseSpies();
     const request = context({}, response.res);
-    const input = { retained: true };
     const clear = cookieScheme("session", {
       domain: "example.com",
       httpOnly: true,
@@ -63,7 +61,7 @@ describe("cookieScheme", () => {
       secure: true,
     }).clear;
 
-    expect(clear(input, request)).toBe(input);
+    clear(request);
     expect(response.clearCookie).toHaveBeenCalledWith("session", {
       domain: "example.com",
       partitioned: true,

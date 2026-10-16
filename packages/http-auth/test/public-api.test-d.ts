@@ -74,12 +74,8 @@ app.get("/optional", (line) =>
 declare const context: HttpContext;
 expectTypeOf(cookie.read(context)).toEqualTypeOf<Promise<string | undefined>>();
 expectTypeOf(bearer.read(context)).toEqualTypeOf<Promise<string | undefined>>();
-expectTypeOf(cookie.set({ retained: true, sessionId: "session-id", expiresAt: new Date() }, context)).toEqualTypeOf<{
-  retained: boolean;
-  sessionId: string;
-  expiresAt: Date;
-}>();
-expectTypeOf(cookie.clear({ retained: true }, context)).toEqualTypeOf<{ retained: boolean }>();
+expectTypeOf(cookie.set({ sessionId: "session-id", expiresAt: new Date() }, context)).toEqualTypeOf<void>();
+expectTypeOf(cookie.clear(context)).toEqualTypeOf<void>();
 expectTypeOf(cookie.metadata).toMatchTypeOf<HttpMetadata>();
 expectTypeOf(bearer.metadata).toMatchTypeOf<HttpMetadata>();
 expectTypeOf(authErrorMapper).returns.toEqualTypeOf<import("@danielsharp/typeline-http").HttpError | undefined>();
