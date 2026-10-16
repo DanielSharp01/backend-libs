@@ -21,7 +21,7 @@
     "dist"
   ],
   "dependencies": {
-    "@danielsharp/common": "workspace:*"
+    "@danielsharp/common": "workspace:^"
   },
   "scripts": {
     "build": "tsdown",

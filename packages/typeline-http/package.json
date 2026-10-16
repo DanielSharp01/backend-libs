@@ -24,7 +24,7 @@
     "dist"
   ],
   "dependencies": {
-    "@danielsharp/common": "workspace:*",
+    "@danielsharp/common": "workspace:^",
     "@scalar/openapi-types": "catalog:",
     "busboy": "catalog:",
     "mime-types": "catalog:"
@@ -37,8 +37,8 @@
     "test:types": "vitest run --typecheck.only --project @danielsharp/typeline-http"
   },
   "devDependencies": {
-    "@danielsharp/typeline": "workspace:*",
-    "@danielsharp/zod": "workspace:*",
+    "@danielsharp/typeline": "workspace:^",
+    "@danielsharp/zod": "workspace:^",
     "@hyperjump/json-schema": "catalog:",
     "@types/busboy": "catalog:",
     "@types/express": "catalog:",
@@ -50,8 +50,8 @@
     "access": "restricted"
   },
   "peerDependencies": {
-    "@danielsharp/typeline": "workspace:*",
-    "@danielsharp/zod": "workspace:*",
+    "@danielsharp/typeline": "workspace:^",
+    "@danielsharp/zod": "workspace:^",
     "zod": "catalog:"
   }
 }

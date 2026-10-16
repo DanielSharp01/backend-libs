@@ -29,7 +29,7 @@
   },
   "peerDependencies": {
     "drizzle-orm": "catalog:",
-    "@danielsharp/zod": "workspace:*",
+    "@danielsharp/zod": "workspace:^",
     "zod": "catalog:"
   }
 }

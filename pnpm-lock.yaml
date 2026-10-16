@@ -78,7 +78,7 @@ importers:
   packages/auth:
     dependencies:
       '@danielsharp/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       google-auth-library:
         specifier: 'catalog:'
@@ -89,7 +89,7 @@ importers:
   packages/drizzle:
     dependencies:
       '@danielsharp/zod':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../zod
       zod:
         specifier: 'catalog:'
@@ -102,14 +102,14 @@ importers:
   packages/http-auth:
     dependencies:
       '@danielsharp/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
     devDependencies:
       '@danielsharp/auth':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../auth
       '@danielsharp/typeline-http':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../typeline-http
       zod:
         specifier: 'catalog:'
@@ -118,7 +118,7 @@ importers:
   packages/redis:
     dependencies:
       '@danielsharp/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
     devDependencies:
       redis:
@@ -128,13 +128,13 @@ importers:
   packages/typeline:
     dependencies:
       '@danielsharp/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
 
   packages/typeline-http:
     dependencies:
       '@danielsharp/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@scalar/openapi-types':
         specifier: 'catalog:'
@@ -147,10 +147,10 @@ importers:
         version: 3.0.2
     devDependencies:
       '@danielsharp/typeline':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../typeline
       '@danielsharp/zod':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../zod
       '@hyperjump/json-schema':
         specifier: 'catalog:'
