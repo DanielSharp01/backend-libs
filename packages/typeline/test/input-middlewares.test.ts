@@ -60,10 +60,10 @@ describe("input middlewares", () => {
     expect(tap).toHaveBeenCalledWith(input, context);
   });
 
-  it("runs middleware against selected input while preserving the outer input and metadata", async () => {
+  it("runs middleware against selected input, passing on its output and metadata", async () => {
     const input = { requestId: "request-1", response: { value: 2 } };
     const context = { suffix: "done" };
-    const selected = vi.fn(async (_value: typeof input.response, _context: Context) => undefined);
+    const selected = vi.fn(async (value: typeof input.response, _context: Context) => value.value * 2);
     const line = typeline<typeof input, typeof input, Context, Metadata>().pipe(
       selectInput((value: typeof input) => value.response, {
         metadata: { name: "response" },
@@ -71,9 +71,20 @@ describe("input middlewares", () => {
       }),
     );
 
-    await expect(line.push(input, context)).resolves.toBe(input);
+    await expect(line.push(input, context)).resolves.toBe(4);
     expect(selected).toHaveBeenCalledWith(input.response, context);
     expect(line.metadata).toEqual([{ name: "response" }]);
+  });
+
+  it("keeps the outer input when a selected middleware is tapped", async () => {
+    const input = { requestId: "request-1", response: { value: 2 } };
+    const selected = vi.fn(async (_value: typeof input.response, _context: Context) => undefined);
+    const line = typeline<typeof input, typeof input, Context, Metadata>().pipe(
+      tapInput(selectInput((value: typeof input) => value.response, selected)),
+    );
+
+    await expect(line.push(input, { suffix: "done" })).resolves.toBe(input);
+    expect(selected).toHaveBeenCalledWith(input.response, { suffix: "done" });
   });
 
   it("moves a property without mutating the input", () => {

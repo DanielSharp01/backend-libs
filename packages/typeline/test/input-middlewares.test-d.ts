@@ -46,8 +46,11 @@ const selected = root.pipe(
     },
   }),
 );
-expectTypeOf<OutputOf<typeof selected>>().toEqualTypeOf<Input>();
+expectTypeOf<OutputOf<typeof selected>>().toEqualTypeOf<Input["request"]>();
 expectTypeOf(selected.metadata).toEqualTypeOf<Metadata[]>();
+
+const tappedSelection = root.pipe(tapInput(selectInput((input: Input) => input.request, (request: Input["request"]) => request.id)));
+expectTypeOf<OutputOf<typeof tappedSelection>>().toEqualTypeOf<Input>();
 
 const moved = moveInput("request", "originalRequest")({ path: "/users", request: { id: "user" } });
 expectTypeOf(moved.path).toEqualTypeOf<string>();
