@@ -10,6 +10,7 @@ describe("public API", () => {
       "OAuthError",
       "SessionInvalidError",
       "hashToken",
+      "issueExpiringToken",
       "issueOpaqueToken",
       "issuePkce",
       "sessionProvider",

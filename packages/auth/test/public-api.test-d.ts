@@ -6,6 +6,7 @@ import {
   SessionInvalidError,
   hashToken,
   issuePkce,
+  issueExpiringToken,
   issueOpaqueToken,
   sessionProvider,
   tokenSecondsUntil,
@@ -20,6 +21,7 @@ import { googleOauth, type GoogleIdentity } from "../src/google";
 
 expectTypeOf(hashToken).toBeFunction();
 expectTypeOf(issuePkce).toBeFunction();
+expectTypeOf(issueExpiringToken).toBeFunction();
 expectTypeOf(issueOpaqueToken).toBeFunction();
 expectTypeOf(sessionProvider).toBeFunction();
 expectTypeOf(tokenSecondsUntil).toBeFunction();
@@ -34,6 +36,7 @@ declare const store: SessionStore<Auth>;
 expectTypeOf(sessionProvider(store, { expiresInMs: 60_000 })).toEqualTypeOf<SessionProvider<Auth>>();
 expectTypeOf(hashToken("token")).toEqualTypeOf<string>();
 expectTypeOf(issuePkce()).toEqualTypeOf<Pkce>();
+expectTypeOf(issueExpiringToken(60_000)).toEqualTypeOf<{ token: string; idHash: string; expiresAt: Date }>();
 expectTypeOf(issueOpaqueToken()).toEqualTypeOf<string>();
 expectTypeOf(tokenSecondsUntil(new Date())).toEqualTypeOf<number>();
 

@@ -12,3 +12,8 @@ export function tokenSecondsUntil(expiresAt: Date | number, now = Date.now()) {
   const expiresAtMs = expiresAt instanceof Date ? expiresAt.getTime() : expiresAt;
   return Math.max(0, Math.ceil((expiresAtMs - now) / 1000));
 }
+
+export function issueExpiringToken(expiresInMs: number, now = Date.now()) {
+  const token = issueOpaqueToken();
+  return { token, idHash: hashToken(token), expiresAt: new Date(now + expiresInMs) };
+}

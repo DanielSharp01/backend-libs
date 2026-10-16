@@ -1,6 +1,6 @@
 import type { Awaitable } from "@danielsharp/common";
 import { SessionInvalidError } from "./errors";
-import { hashToken, issueOpaqueToken } from "./token";
+import { hashToken, issueExpiringToken } from "./token";
 
 export interface IssuedSession {
   sessionId: string;
@@ -28,9 +28,8 @@ export function sessionProvider<TSession>(
 
   return {
     async issue(session) {
-      const sessionId = issueOpaqueToken();
-      const expiresAt = new Date(now() + expiresInMs);
-      await store.setSession(hashToken(sessionId), session, expiresAt);
+      const { token: sessionId, idHash, expiresAt } = issueExpiringToken(expiresInMs, now());
+      await store.setSession(idHash, session, expiresAt);
       return { sessionId, expiresAt };
     },
     async verify(sessionId) {

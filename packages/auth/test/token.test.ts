@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { issuePkce } from "../src/oauth";
-import { hashToken, issueOpaqueToken, tokenSecondsUntil } from "../src/token";
+import { hashToken, issueExpiringToken, issueOpaqueToken, tokenSecondsUntil } from "../src/token";
 
 describe("opaque tokens", () => {
   it("creates distinct 256-bit tokens", () => {
@@ -16,6 +16,14 @@ describe("opaque tokens", () => {
 
   it("hashes tokens deterministically", () => {
     expect(hashToken("token")).toBe("3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0");
+  });
+
+  it("issues an expiring token with its hash and expiry", () => {
+    const { token, idHash, expiresAt } = issueExpiringToken(60_000, 1_000);
+
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    expect(idHash).toBe(hashToken(token));
+    expect(expiresAt).toEqual(new Date(61_000));
   });
 
   it("returns whole seconds until expiry", () => {
