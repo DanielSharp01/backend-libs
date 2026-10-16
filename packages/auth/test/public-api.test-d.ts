@@ -2,6 +2,7 @@ import { expectTypeOf } from "vitest";
 
 import {
   AuthError,
+  OAuthDeniedError,
   OAuthError,
   SessionInvalidError,
   hashToken,
@@ -28,6 +29,7 @@ expectTypeOf(tokenSecondsUntil).toBeFunction();
 expectTypeOf(googleOauth).toBeFunction();
 expectTypeOf(AuthError.is).toBeFunction();
 expectTypeOf(OAuthError).toBeConstructibleWith(new Error());
+expectTypeOf(OAuthDeniedError).toBeConstructibleWith();
 expectTypeOf(SessionInvalidError).toBeConstructibleWith();
 
 type Auth = { userId: string };
@@ -90,6 +92,10 @@ expectTypeOf(
 ).toEqualTypeOf<Promise<GoogleIdentity>>();
 
 declare const error: unknown;
+if (OAuthDeniedError.is(error)) {
+  expectTypeOf(error).toEqualTypeOf<OAuthDeniedError>();
+}
+
 if (OAuthError.is(error)) {
   expectTypeOf(error).toEqualTypeOf<OAuthError>();
   expectTypeOf(error.code).toEqualTypeOf<"OAUTH_ERROR">();

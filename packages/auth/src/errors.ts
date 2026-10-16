@@ -48,3 +48,17 @@ export class OAuthError extends AuthError<typeof OAuthError.code> {
     return AuthError.is(error) && error.code === OAuthError.code;
   }
 }
+
+/** OAuth's `access_denied`: the person or the provider refused consent, as opposed to sign-in failing. */
+export class OAuthDeniedError extends AuthError<typeof OAuthDeniedError.code> {
+  static readonly code = "OAUTH_DENIED";
+
+  constructor() {
+    super("OAuth sign-in was denied", OAuthDeniedError.code);
+    this.name = "OAuthDeniedError";
+  }
+
+  static is(error: unknown): error is OAuthDeniedError {
+    return AuthError.is(error) && error.code === OAuthDeniedError.code;
+  }
+}

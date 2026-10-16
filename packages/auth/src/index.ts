@@ -3,4 +3,4 @@ export type { OAuthAuthorizationRequest, OAuthProvider, OAuthRequest, Pkce } fro
 export { sessionProvider } from "./session";
 export type { IssuedSession, SessionProvider, SessionProviderOptions, SessionStore } from "./session";
 export { hashToken, issueExpiringToken, issueOpaqueToken, tokenSecondsUntil } from "./token";
-export { AuthError, SessionInvalidError, OAuthError } from "./errors";
+export { AuthError, SessionInvalidError, OAuthDeniedError, OAuthError } from "./errors";

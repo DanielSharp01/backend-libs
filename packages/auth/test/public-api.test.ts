@@ -7,6 +7,7 @@ describe("public API", () => {
   it("exposes the supported root exports", () => {
     expect(Object.keys(auth).sort()).toEqual([
       "AuthError",
+      "OAuthDeniedError",
       "OAuthError",
       "SessionInvalidError",
       "hashToken",
