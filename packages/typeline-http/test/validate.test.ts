@@ -151,6 +151,16 @@ describe("HTTP validators", () => {
     expect(input.req.raw.readableEnded).toBe(false);
   });
 
+  it("keeps non-ASCII file names intact", async () => {
+    const form = new FormData();
+    form.append("file", new File(["text"], "Ellenőrzési Szabályzat.docx"));
+    const input = await multipartContext(form);
+
+    const output = await validateMultipart(z.object({ file: z.file() })).mw({}, input);
+
+    expect(output.body.file.name).toBe("Ellenőrzési Szabályzat.docx");
+  });
+
   it("parses multipart text and file parts with flat scalar-or-array semantics", async () => {
     const form = new FormData();
     form.append("title", "Hello world");

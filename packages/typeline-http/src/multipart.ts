@@ -26,6 +26,8 @@ export async function parseMultipartBody(
     try {
       parser = busboy({
         headers: { "content-type": multipartContentTypeHeader(headers) },
+        // Browsers and fetch send filenames as raw UTF-8, not the Latin-1 busboy assumes by default.
+        defParamCharset: "utf8",
         limits: { fieldSize: body.byteLength, fileSize: body.byteLength },
       });
     } catch (error) {
