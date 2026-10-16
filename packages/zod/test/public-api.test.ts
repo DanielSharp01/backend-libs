@@ -9,6 +9,7 @@ describe("public API", () => {
       "ZodSchemaConversionError",
       "zodFlatten",
       "zodJsonSchemas",
+      "zodJsonString",
       "zodJsonify",
       "zodMapEachKey",
       "zodReferences",

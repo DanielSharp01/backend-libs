@@ -6,6 +6,7 @@ import {
   ZodSchemaConversionError,
   zodJsonSchemas,
   zodReferences,
+  zodJsonString,
   zodJsonify,
   zodMapEachKey,
   zodStringify,
@@ -18,6 +19,7 @@ import {
 
 expectTypeOf(ZodError.is).toBeFunction();
 expectTypeOf(ZodSchemaConversionError.is).toBeFunction();
+expectTypeOf(zodJsonString).toBeFunction();
 expectTypeOf(zodJsonify).toBeFunction();
 expectTypeOf(zodMapEachKey).toBeFunction();
 expectTypeOf(zodJsonSchemas).toBeFunction();
